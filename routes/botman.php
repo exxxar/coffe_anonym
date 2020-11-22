@@ -212,7 +212,48 @@ $botman->hears('/i_am_([a-zA-Z]+)', function ($bot, $type) {
     $user->sex = $type == "man" ? 1 : 0;
     $user->save();
 
-    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников;)");
+    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /settings");
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => $message,
+            "parse_mode" => "Markdown",
+        ]);
+
+})->stopsConversation();
+
+$botman->hears('/restart', function ($bot) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $user->need_meeting = true;
+
+    $user->save();
+
+    $message = sprintf("Ура, новые встречи ждут!\xF0\x9F\x98\x84");
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => $message,
+            "parse_mode" => "Markdown",
+        ]);
+
+})->stopsConversation();
+$botman->hears('/stop', function ($bot) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $user->need_meeting = false;
+
+    $user->save();
+
+    $message = sprintf("На этой неделе вы не будете получать предложений о встрече, но вот со следующей недели... будь готов к новым и интересным знакомствам\xF0\x9F\x98\x84");
 
     $bot->sendRequest("sendMessage",
         [
@@ -237,7 +278,7 @@ $botman->hears('/prefer_([a-zA-Z]+)', function ($bot, $type) {
 
     $user->save();
 
-    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников;)");
+    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /settings");
 
     $bot->sendRequest("sendMessage",
         [
@@ -258,23 +299,26 @@ $botman->hears('.*Настройки?|/settings', function ($bot) {
 Мы не сводим половинки, но мы помогаем Вам провести время в компании интересного собеседника!
 
 Предлагаем Вам выбрать предпочтительного собеседника:
-/prefer_man - предпочтительно мужчины (парни) ".($user->prefer_meet_in_week==1?"\xE2\x9C\x85":"")."
-/prefer_woman - предпочтительно женщины (девушки) ".($user->prefer_meet_in_week==2?"\xE2\x9C\x85":"")."
-/prefer_any - любой собеседник ".($user->prefer_meet_in_week==3?"\xE2\x9C\x85":"")."
+/prefer_man - предпочтительно мужчины (парни) " . ($user->prefer_meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
+/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
+/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
 
 Также рекомендуем определиться с числом встречь в неделю!
 
-/prefer_one - максимум одна встреча в неделю ".($user->meet_in_week==1?"\xE2\x9C\x85":"")."
-/prefer_two - одна или две встречи в неделю ".($user->meet_in_week==2?"\xE2\x9C\x85":"")."
-/prefer_three - от одной до трёх встреч ".($user->meet_in_week==3?"\xE2\x9C\x85":"")."
+/prefer_one - максимум одна встреча в неделю " . ($user->meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
+/prefer_two - одна или две встречи в неделю " . ($user->meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
+/prefer_three - от одной до трёх встреч " . ($user->meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
 
-Или же, вы можете отдохнуть от встреч
+А так же, вы всегда можете отдохнуть от встреч (или возобновить встречи)
 
-/stop - больше нет желания с кем-либо встречаться (в течении недели)
+" . (!$user->need_meeting ?
+            "/restart - появилось желание с кем-либо встретиться!" :
+            "/stop - больше нет желания с кем-либо встречаться (в течении недели)"
+        ) . "
 
 Если вдруг вы ошибочного выбрали свой собственный пол, то его тоже легко можно поменять:
-/i_am_man - собседники будут принимать вас за мужчину (парня) ".($user->sex==0?"\xE2\x9C\x85":"")."
-/i_am_woman - собседники будут принимать вас за женщину (девушку) ".($user->sex==1?"\xE2\x9C\x85":"")."
+/i_am_man - собседники будут воспринимать вас как мужчину (парня) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
+/i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 1 ? "\xE2\x9C\x85" : "") . "
     ";
 
     $bot->sendRequest("sendMessage",

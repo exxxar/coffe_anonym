@@ -302,6 +302,7 @@ class Base
 Наши правила вы сможете прочитать тут /rules
 А сделать встречи более комфортными можно тут /settings
 ");
+
         Base::mainMenu($bot, $message);
 
         Base::checkSex($bot);
