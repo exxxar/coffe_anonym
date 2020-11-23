@@ -264,7 +264,7 @@ $botman->hears('/stop', function ($bot) {
 
 })->stopsConversation();
 
-$botman->hears('/prefer_([a-zA-Z]+)', function ($bot, $type) {
+$botman->hears('/prefer_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $type) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
@@ -321,7 +321,7 @@ $botman->hears('.*Настройки?|/settings', function ($bot) {
 /i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
     ";
 
-    $bot->sendRequest("sendMessage",
+   $bot->sendRequest("sendMessage",
         [
             "chat_id" => "$id",
             "text" => $message,
@@ -334,7 +334,7 @@ $botman->hears('.*Раздел администратора|/admin', function ($
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
-    if (!isAdmin($bot)) {
+    if (!Base::isAdmin($bot)) {
         $bot->reply("Раздел недоступен");
         return;
     }

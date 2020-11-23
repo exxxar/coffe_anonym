@@ -146,14 +146,11 @@ class Base
 
         $user = User::where("telegram_chat_id", $id)->first();
 
-        $tmp_id = (string)$user->id;
-        while (strlen($tmp_id) < 10)
-            $tmp_id = "0" . $tmp_id;
 
         $keyboard = [
             [
-                ["text" => "\xE2\x9C\x8FНаписать пользователю", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . base64_encode("002" . $tmp_id . "0000000000")],
-                ["text" => "\xE2\x98\x95Организовать встречу", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . base64_encode("003" . $tmp_id . "0000000000")]
+                ["text" => "\xE2\x9C\x8FНаписать пользователю", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "001" . $user->id],
+                ["text" => "\xE2\x98\x95Организовать встречу", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "002" . $user->id]
             ],
         ];
 

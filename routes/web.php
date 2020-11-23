@@ -13,11 +13,13 @@
 
 Route::get('/', function () {
 
-    $data = YaGeo::setQuery('53.082592, 56.424311')->load();
+    /*$data = YaGeo::setQuery('53.082592, 56.424311')->load();
 
     $data = $data->getResponse()->getLocality();
 
-    dd($data);
+    dd($data);*/
+
+
 });
 
 Route::match(['get', 'post'], '/botman', 'BotManController@handle');
