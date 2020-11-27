@@ -360,6 +360,10 @@ $botman->hears('.*Раздел администратора|/admin', function ($
 $botman->hears('.*Тех. поддержка|.*заявка.*', BotManController::class . '@startRequestWithMessage')->stopsConversation();
 
 $botman->receivesImages(function ($bot, $images) {
+
+    if (is_null($bot->getUser()))
+        return;
+
     $bot->reply("Спасибо!) Ваше изображение отпавлено администратору;)");
     foreach ($images as $image) {
 
@@ -371,9 +375,6 @@ $botman->receivesImages(function ($bot, $images) {
         $id = $telegramUser->getId();
 
         $user = User::where("telegram_chat_id", $id)->first();
-
-        if (is_null($user))
-            return;
 
         $keyboard = [
             [
@@ -396,6 +397,9 @@ $botman->receivesImages(function ($bot, $images) {
 
 $botman->receivesAudio(function ($bot, $audios) {
 
+    if (is_null($bot->getUser()))
+        return;
+
     $bot->reply("Спасибо! Голосовое сообщение отправлено нашим администраторам;)");
     foreach ($audios as $audio) {
 
@@ -407,8 +411,6 @@ $botman->receivesAudio(function ($bot, $audios) {
 
         $user = User::where("telegram_chat_id", $id)->first();
 
-        if (is_null($user))
-            return;
 
         $keyboard = [
             [
