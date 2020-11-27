@@ -182,6 +182,10 @@ class Base
         if (count($events) > 0)
             array_push($keyboard, ["\xE2\xAD\x90Встречи в рамках событий"]);
 
+        array_push($keyboard, [
+            ["text" => "\xF0\x9F\x93\x8DМоментальная встреча",
+                "request_location" => true]
+        ]);
         array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
         array_push($keyboard, ["\xE2\x98\x9DКак пользоваться?"]);
 
@@ -404,4 +408,101 @@ class Base
         Base::checkSex($bot);
     }
 
+
+    public static function prepareAdditionalText($user)
+    {
+
+        $settings = json_decode(is_null($user->settings) ?
+            json_encode([
+                "range" => 500,
+                "time" => 5,
+                "city" => 0
+            ]) : $user->settings);
+
+        $message = "
+Предлагаем вам дополнительно настроить параметры гео-локации:
+
+Настраиваем радиус поиска ближайшего собеседника
+/in_range_500 - до 500 метров " . ($settings->range == 500 ? "\xE2\x9C\x85" : "") . "
+/in_range_1000 - до 1 км " . ($settings->range == 1000 ? "\xE2\x9C\x85" : "") . "
+/in_range_2000 - до 2х км " . ($settings->range == 2000 ? "\xE2\x9C\x85" : "") . "
+/in_range_3000 - до 3х км " . ($settings->range == 3000 ? "\xE2\x9C\x85" : "") . "
+
+Настравиваем время ожидания подбора собеседника
+
+/in_time_5 - до 5 минут " . ($settings->time == 5 ? "\xE2\x9C\x85" : "") . "
+/in_time_10 - до 10 минут " . ($settings->time == 10 ? "\xE2\x9C\x85" : "") . "
+/in_time_15 - до 15 минут " . ($settings->time == 15 ? "\xE2\x9C\x85" : "") . "
+
+Каких собеседников подбираем?
+
+/city_my - только из моего города " . ($settings->city == 0 ? "\xE2\x9C\x85" : "") . "
+/city_all - со всех городов " . ($settings->city == 1 ? "\xE2\x9C\x85" : "") . "
+
+/settings - все оставшиеся настройки
+    ";
+
+        return $message;
+    }
+
+    public static function prepareSettingsText($user)
+    {
+
+        $message = "
+Мы не сводим половинки, но мы помогаем Вам провести время в компании интересного собеседника!
+
+Предлагаем Вам выбрать предпочтительного собеседника:
+/prefer_man - предпочтительно мужчины (парни) " . ($user->prefer_meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
+/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
+/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
+
+Также рекомендуем определиться с числом встречь в неделю!
+
+/prefer_one - максимум одна встреча в неделю " . ($user->meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
+/prefer_two - одна или две встречи в неделю " . ($user->meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
+/prefer_three - от одной до трёх встреч " . ($user->meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
+
+А так же, вы всегда можете отдохнуть от встреч (или возобновить встречи)
+
+" . (!$user->need_meeting ?
+                "/restart - появилось желание с кем-либо встретиться!" :
+                "/stop - больше нет желания с кем-либо встречаться (в течении недели)"
+            ) . "
+
+Если вдруг вы ошибочного выбрали свой собственный пол, то его тоже легко можно поменять:
+/i_am_man - собседники будут воспринимать вас как мужчину (парня) " . ($user->sex == 1 ? "\xE2\x9C\x85" : "") . "
+/i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
+
+/addition_settings - дополнительные настройки
+    ";
+
+        return $message;
+    }
+
+    public static function editOrSend($bot, string $message)
+    {
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $message = json_decode($message);
+
+        $message_id = $bot->userStorage()->get('message_id') ?? null;
+
+        if (!is_null($message_id) && isset($message->on_edit)) {
+            return $bot->sendRequest("editMessageText",
+                [
+                    "message_id" => "$message_id",
+                    "text" => $message->on_edit ?? '',
+                    "parse_mode" => "HTML",
+                ]);
+        }
+
+        return $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => "$id",
+                "text" => $message->on_send ?? '',
+                "parse_mode" => "HTML",
+            ]);
+
+    }
 }

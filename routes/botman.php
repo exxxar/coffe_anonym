@@ -54,8 +54,12 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
+   $bot->userStorage()->delete();
+
     $message = "
-Как начать:
+    
+Вы уже в начали! А всё остальное лишь уточнения:
+
 \xF0\x9F\x94\xB8Определитесь с какими собеседниками комфортнее общаться \xF0\x9F\x91\xA7 или \xF0\x9F\x91\xA6, а может быть это и вовсе не важно?
 \xF0\x9F\x94\xB8Укажите свой регион проживания - ведь проще выпить чашечку \xE2\x98\x95 с людьми поблизости;) 
 \xF0\x9F\x94\xB8И сколько встреч в неделю желаете?) \x31\xE2\x83\xA3, \x32\xE2\x83\xA3 или может быть \x33\xE2\x83\xA3?    
@@ -64,7 +68,7 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
 \xF0\x9F\x94\xB8Каждый раз вы будете получать от меня сообщение c контактами нового человека для встречи.
 \xF0\x9F\x94\xB8Напишите своему собеседнику в Telegram, чтобы договориться о встрече или звонке. 
 \xF0\x9F\x94\xB8Время и место вы выбираете сами.
-\xF0\x9F\x94\xB8е откладывайте, договаривайтесь о встрече сразу.
+\xF0\x9F\x94\xB8Не откладывайте, договаривайтесь о встрече сразу.
 \xF0\x9F\x94\xB8Собеседник не отвечает? Напишите мне в чате, и я подберу нового собеседника.   
 \xF0\x9F\x94\xB8За день до новой встречи я поинтересуюсь, участвуете ли вы, и как прошла ваша предыдущая встреча.
 \xF0\x9F\x94\xB8Если нет желания встречаться - напиши /stop.\n
@@ -93,6 +97,8 @@ $botman->hears('/crules', function ($bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
+   $bot->userStorage()->delete();
+    
     $message = "
     Некоторые особенности *кругов по интересам:*
 \xF0\x9F\x94\xB8 _круг интересов можно создать => /create_
@@ -150,12 +156,10 @@ $botman->hears('/i_am_([a-zA-Z]+)', function ($bot, $type) {
 
     $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /settings");
 
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-            "parse_mode" => "Markdown",
-        ]);
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareSettingsText($user),
+        "on_send" => $message
+    ]));
 
 })->stopsConversation();
 
@@ -171,12 +175,10 @@ $botman->hears('/restart', function ($bot) {
 
     $message = sprintf("Ура, новые встречи ждут!\xF0\x9F\x98\x84");
 
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-            "parse_mode" => "Markdown",
-        ]);
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareSettingsText($user),
+        "on_send" => $message
+    ]));
 
 })->stopsConversation();
 $botman->hears('/stop', function ($bot) {
@@ -191,12 +193,11 @@ $botman->hears('/stop', function ($bot) {
 
     $message = sprintf("На этой неделе вы не будете получать предложений о встрече, но вот со следующей недели... будь готов к новым и интересным знакомствам\xF0\x9F\x98\x84");
 
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-            "parse_mode" => "Markdown",
-        ]);
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareSettingsText($user),
+        "on_send" => $message
+
+    ]));
 
 })->stopsConversation();
 
@@ -214,14 +215,11 @@ $botman->hears('/prefer_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $typ
 
     $user->save();
 
-    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /settings");
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareSettingsText($user),
+        "on_send" => sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /settings")
+    ]));
 
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-            "parse_mode" => "Markdown",
-        ]);
 
 })->stopsConversation();
 
@@ -231,77 +229,131 @@ $botman->hears('.*Настройки?|/settings', function ($bot) {
 
     $user = User::where("telegram_chat_id", $id)->first();
 
-    $message = "
-Мы не сводим половинки, но мы помогаем Вам провести время в компании интересного собеседника!
+    $res = Base::editOrSend($bot, json_encode([
+        "on_send" => Base::prepareSettingsText($user)
+    ]));
 
-Предлагаем Вам выбрать предпочтительного собеседника:
-/prefer_man - предпочтительно мужчины (парни) " . ($user->prefer_meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
-/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
-/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
-
-Также рекомендуем определиться с числом встречь в неделю!
-
-/prefer_one - максимум одна встреча в неделю " . ($user->meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
-/prefer_two - одна или две встречи в неделю " . ($user->meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
-/prefer_three - от одной до трёх встреч " . ($user->meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
-
-А так же, вы всегда можете отдохнуть от встреч (или возобновить встречи)
-
-" . (!$user->need_meeting ?
-            "/restart - появилось желание с кем-либо встретиться!" :
-            "/stop - больше нет желания с кем-либо встречаться (в течении недели)"
-        ) . "
-
-Если вдруг вы ошибочного выбрали свой собственный пол, то его тоже легко можно поменять:
-/i_am_man - собседники будут воспринимать вас как мужчину (парня) " . ($user->sex == 1 ? "\xE2\x9C\x85" : "") . "
-/i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
-
-/addition_settings - дополнительные настройки
-    ";
-
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-        ]);
+    $bot->userStorage()->save([
+        'message_id' => \GuzzleHttp\json_decode($res->getContent())->result->message_id
+    ]);
 
 })->stopsConversation();
 
-$botman->hears('/addition_settings', function ($bot) {
+$botman->hears('/addition_settings', function (\BotMan\BotMan\BotMan $bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
     $user = User::where("telegram_chat_id", $id)->first();
 
-    $message = "
-Предлагаем вам дополнительно настроить параметры гео-локации:
 
-Настраиваем радиус поиска ближайшего собеседника
-/in_range_500 - до 500 метров " . (true ? "\xE2\x9C\x85" : "") . "
-/in_range_1000 - до 1 км " . (false ? "\xE2\x9C\x85" : "") . "
-/in_range_2000 - до 2х км " . (false ? "\xE2\x9C\x85" : "") . "
-/in_range_3000 - до 3х км " . (false ? "\xE2\x9C\x85" : "") . "
+    $res = Base::editOrSend($bot, json_encode([
+        "on_send" => Base::prepareAdditionalText($user),
+    ]));
 
-Настравиваем время ожидания подбора собеседника
-
-/in_time_5 - до 5 минут " . (true ? "\xE2\x9C\x85" : "") . "
-/in_time_10 - до 10 минут " . (false ? "\xE2\x9C\x85" : "") . "
-/in_time_15 - до 15 минут " . (false ? "\xE2\x9C\x85" : "") . "
-
-Каких собеседников подбираем?
-
-/city_my - только из моего города " . (false ? "\xE2\x9C\x85" : "") . "
-/city_all - со всех городов " . (true ? "\xE2\x9C\x85" : "") . "
-    ";
-
-    $bot->sendRequest("sendMessage",
-        [
-            "chat_id" => "$id",
-            "text" => $message,
-        ]);
+    $bot->userStorage()->save([
+        'message_id' => \GuzzleHttp\json_decode($res->getContent())->result->message_id
+    ]);
 
 })->stopsConversation();
 
+$botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $range) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $range_array = [500, 1000, 2000, 3000];
+
+    if (!in_array($range, $range_array)) {
+        $bot->reply("Упс... мне кажется такой дистанции нет");
+        return;
+    }
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $settings = json_decode(is_null($user->settings) ?
+        json_encode([
+            "range" => 500,
+            "time" => 5,
+            "city" => 0
+        ]) : $user->settings);
+
+
+    $settings->range = $range;
+    $user->settings = json_encode($settings);
+    $user->save();
+
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareAdditionalText($user),
+        "on_send" => sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /addition_settings")
+
+    ]));
+
+
+})->stopsConversation();
+
+$botman->hears('/in_time_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $time) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $time_array = [5, 10, 15];
+
+    if (!in_array($time, $time_array)) {
+        $bot->reply("Упс... мне кажется такого времени нет");
+        return;
+    }
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $settings = json_decode(is_null($user->settings) ?
+        json_encode([
+            "range" => 500,
+            "time" => 5,
+            "city" => 0
+        ]) : $user->settings);
+
+
+    $settings->time = $time;
+    $user->settings = json_encode($settings);
+    $user->save();
+
+    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /addition_settings");
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareAdditionalText($user),
+        "on_send" => $message
+    ]));
+})->stopsConversation();
+
+$botman->hears('/city_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $type) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    Log::info(print_r($bot->getMessage()->getPayload(), true));
+
+    $city_array = ["my" => 0, "all" => 1];
+
+    if (!key_exists($type, $city_array)) {
+        $bot->reply("Упс... мне кажется такого варианта нет");
+        return;
+    }
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $settings = json_decode(is_null($user->settings) ?
+        json_encode([
+            "range" => 500,
+            "time" => 5,
+            "city" => 0
+        ]) : $user->settings);
+
+
+    $settings->city = $city_array[$type];
+    $user->settings = json_encode($settings);
+    $user->save();
+
+    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /addition_settings");
+    Base::editOrSend($bot, json_encode([
+        "on_edit" => Base::prepareAdditionalText($user),
+        "on_send" => $message
+    ]));
+
+
+})->stopsConversation();
 
 $botman->hears('.*Раздел администратора|/admin', function ($bot) {
 
@@ -359,16 +411,16 @@ $botman->hears('.*Раздел администратора|/admin', function ($
 
 $botman->hears('.*Тех. поддержка|.*заявка.*', BotManController::class . '@startRequestWithMessage')->stopsConversation();
 
-$botman->receivesImages(function ($bot, $images) {
+$botman->receivesImages(function (\BotMan\BotMan\BotMan $bot, $images) {
 
-    if (is_null($bot->getUser()))
+    if (isset($bot->getMessage()->getPayload()["sender_chat"]))
         return;
 
     $bot->reply("Спасибо!) Ваше изображение отпавлено администратору;)");
     foreach ($images as $image) {
 
         $url = $image->getUrl(); // The direct url
-        $title = $image->getTitle(); // The title, if available
+        $title = $image->getTitle() ?? ''; // The title, if available
         $payload = $image->getPayload(); // The original payload
 
         $telegramUser = $bot->getUser();
@@ -384,7 +436,7 @@ $botman->receivesImages(function ($bot, $images) {
 
         Telegram::sendPhoto([
             'chat_id' => env("TELEGRAM_ADMIN_CHANNEL"),
-            "caption" => "От пользователя: @" . $user->name,
+            "caption" => "$title\nОт пользователя: @" . $user->name,
             'parse_mode' => 'Markdown',
             'photo' => \Telegram\Bot\FileUpload\InputFile::create($url),
             'reply_markup' => json_encode([
@@ -397,7 +449,7 @@ $botman->receivesImages(function ($bot, $images) {
 
 $botman->receivesAudio(function ($bot, $audios) {
 
-    if (is_null($bot->getUser()))
+    if (isset($bot->getMessage()->getPayload()["sender_chat"]))
         return;
 
     $bot->reply("Спасибо! Голосовое сообщение отправлено нашим администраторам;)");
@@ -434,6 +486,10 @@ $botman->receivesAudio(function ($bot, $audios) {
 });
 
 $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
+
+    if (isset($bot->getMessage()->getPayload()["sender_chat"]))
+        return;
+
     $messages = [
         "Спасибо что пишите мне!",
         "Я обязательно вскоре отвечу!",
@@ -446,7 +502,6 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
     $json = json_decode($bot->getMessage()->getPayload());
 
-    Log::info(print_r($json, true));
 
     $find = false;
     if (isset($json->contact)) {
@@ -531,16 +586,26 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                     "parse_mode" => "Markdown",
                 ]);
 
+            $bot->sendRequest("stopMessageLiveLocation",
+                [
+                    "chat_id" => $nearest_user->telegram_chat_id,
+                ]);
+
+
             $bot->sendRequest("sendMessage",
                 [
                     "chat_id" => $id,
                     "text" => $message_2,
                     "parse_mode" => "Markdown",
                 ]);
+
+            $bot->sendRequest("stopMessageLiveLocation",
+                [
+                    "chat_id" => $id,
+                ]);
+
+
         }
-
-
-        ///todo: отправлять аудио и фото сообщение
 
 
         $find = true;

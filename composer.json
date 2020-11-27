@@ -21,7 +21,8 @@
         "jackmartin/laravel-yandex-geocode": "^1.2",
         "kwn/number-to-words": "^1.12",
         "laravel/framework": "5.7.*",
-        "laravel/tinker": "^1.0"
+        "laravel/tinker": "^1.0",
+      "ext-json": "*"
     },
     "require-dev": {
         "beyondcode/laravel-dump-server": "^1.0",

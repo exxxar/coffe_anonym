@@ -28,6 +28,7 @@ class CreateUsersTable extends Migration
             $table->integer('prefer_meet_in_week')->default(0)->comment("С кем предпочтительно встречаться"); //0 - мужчины, 1 - женщины, 2 - без разницы
 
             $table->json('location')->nullable();
+            $table->json('settings')->nullable();
 
             $table->boolean('is_admin')->default(false);
 

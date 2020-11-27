@@ -27,6 +27,7 @@ class User extends Authenticatable
         'sex',
         'need_meeting',
         'location',
+        'settings',
         'meet_in_week',
         'prefer_meet_in_week',
     ];
