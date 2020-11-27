@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use NumberToWords\NumberToWords;
 
 use App\Classes\Base;
+use Telegram\Bot\Laravel\Facades\Telegram;
 
 
 $botman = resolve('botman');
@@ -68,7 +69,7 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
 \xF0\x9F\x94\xB8За день до новой встречи я поинтересуюсь, участвуете ли вы, и как прошла ваша предыдущая встреча.
 \xF0\x9F\x94\xB8Если нет желания встречаться - напиши /stop.\n
 
-Если есть вопросы или предложения — пишите мне в этом чате.
+Если есть вопросы или предложения — пишите мне в этом чате (голосовые и изображения тоже принимаются).
 
 /settings - настройка комфорта встреч 
 /crules - правила кругов интересов
@@ -358,23 +359,75 @@ $botman->hears('.*Раздел администратора|/admin', function ($
 
 $botman->hears('.*Тех. поддержка|.*заявка.*', BotManController::class . '@startRequestWithMessage')->stopsConversation();
 
-$botman->receivesImages(function($bot, $images) {
-    $bot->reply("Изображения еще не принимаюсят:( Но мы над этим работаем!");
+$botman->receivesImages(function ($bot, $images) {
+    $bot->reply("Спасибо!) Ваше изображение отпавлено администратору;)");
     foreach ($images as $image) {
 
         $url = $image->getUrl(); // The direct url
         $title = $image->getTitle(); // The title, if available
         $payload = $image->getPayload(); // The original payload
+
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $user = User::where("telegram_chat_id", $id)->first();
+
+        if (is_null($user))
+            return;
+
+        $keyboard = [
+            [
+                ["text" => "\xE2\x9C\x8FНаписать пользователю", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "001" . $user->id],
+            ],
+        ];
+
+        Telegram::sendPhoto([
+            'chat_id' => env("TELEGRAM_ADMIN_CHANNEL"),
+            "caption" => "От пользователя: @" . $user->name,
+            'parse_mode' => 'Markdown',
+            'photo' => \Telegram\Bot\FileUpload\InputFile::create($url),
+            'reply_markup' => json_encode([
+                'inline_keyboard' =>
+                    $keyboard
+            ])
+        ]);
     }
 });
 
-$botman->receivesAudio(function($bot, $audios) {
+$botman->receivesAudio(function ($bot, $audios) {
 
-    $bot->reply("Голосовые сообщения еще не принимаюсят:( Но мы над этим работаем!");
+    $bot->reply("Спасибо! Голосовое сообщение отправлено нашим администраторам;)");
     foreach ($audios as $audio) {
 
         $url = $audio->getUrl(); // The direct url
         $payload = $audio->getPayload(); // The original payload
+
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $user = User::where("telegram_chat_id", $id)->first();
+
+        if (is_null($user))
+            return;
+
+        $keyboard = [
+            [
+                ["text" => "\xE2\x9C\x8FНаписать пользователю", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "001" . $user->id],
+            ],
+        ];
+
+        Telegram::sendAudio([
+            'chat_id' => env("TELEGRAM_ADMIN_CHANNEL"),
+            "caption" => "От пользователя: @" . $user->name,
+            'parse_mode' => 'Markdown',
+            'audio' => \Telegram\Bot\FileUpload\InputFile::create($url),
+            'reply_markup' => json_encode([
+                'inline_keyboard' =>
+                    $keyboard
+            ])
+        ]);
+
+
     }
 });
 
@@ -391,7 +444,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
     $json = json_decode($bot->getMessage()->getPayload());
 
-    Log::info(print_r($json,true));
+    Log::info(print_r($json, true));
 
     $find = false;
     if (isset($json->contact)) {
@@ -443,7 +496,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
 
         if (count($nearest) === 0) {
-            $message =  "Увы, в данную минуту никого поблизости нет\xF0\x9F\x98\xA2, если в течении <b>5 минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
+            $message = "Увы, в данную минуту никого поблизости нет\xF0\x9F\x98\xA2, если в течении <b>5 минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
 
             $bot->sendRequest("sendMessage",
                 [
@@ -452,13 +505,11 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                     "parse_mode" => "HTML",
                 ]);
 
-        }
-
-        else {
+        } else {
 
             $nearest_user = $nearest->random(1)->first();
-            $message_1 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @".$user->name;
-            $message_2 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @".$nearest_user->name;
+            $message_1 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @" . $user->name;
+            $message_2 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @" . $nearest_user->name;
 
             $nu_location = json_decode($nearest_user->location);
             $nu_location->last_seen = null;
@@ -488,10 +539,6 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
 
         ///todo: отправлять аудио и фото сообщение
-
-
-
-
 
 
         $find = true;
