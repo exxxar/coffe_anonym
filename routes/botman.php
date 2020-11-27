@@ -41,7 +41,7 @@ $botman->hears('/start', function ($bot) {
 })->stopsConversation();
 
 $botman->hears('.*Круги по интересам', function ($bot) {
-    Base::profileMenu($bot, "Ваш личный уголок\xF0\x9F\x8F\xA1\n*Правила кругов интересов* можно прочитать тут /crules\nА для *настройки комфорта* встречь - /settings \xF0\x9F\x98\x89");
+    Base::profileMenu($bot, "Ваш личный уголок\xF0\x9F\x8F\xA1\n/crules - *правила кругов интересов* можно прочитать тут\n/settings - *настройки комфорта* встречь -  \xF0\x9F\x98\x89");
 })->stopsConversation();
 
 $botman->hears('.*Мои круги интересов|/my_circles ([0-9+])|/my_circles', function ($bot, $page = 0) {
