@@ -20,6 +20,7 @@ Route::get('/', function () {
     dd($data);*/
 
 
+
 });
 
 Route::match(['get', 'post'], '/botman', 'BotManController@handle');

@@ -19,7 +19,22 @@ $botman = resolve('botman');
 
 $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation');
 
-$botman->hears('.*Главное меню|.*Передумал создавать|/start', function ($bot) {
+$botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
+
+    $messages = [
+        "Спасибо что пишите мне!",
+        "Я вижу ваш интерес;)",
+        "Вы точно в теме!)",
+        "Такие сообщения радуют меня!",
+        "Каждое сообщение будет услышано!",
+    ];
+
+    Base::initUser($bot);
+    Base::start($bot, $messages[rand(0, count($messages) - 1)]);
+})->stopsConversation();
+
+
+$botman->hears('/start', function ($bot) {
     Base::initUser($bot);
     Base::start($bot);
 })->stopsConversation();
@@ -30,90 +45,7 @@ $botman->hears('.*Круги по интересам', function ($bot) {
 
 $botman->hears('.*Мои круги интересов|/my_circles ([0-9+])|/my_circles', function ($bot, $page = 0) {
 
-    $telegramUser = $bot->getUser();
-    $id = $telegramUser->getId();
-
-    $user = (User::with(["circles"])->where("telegram_chat_id", $id)->first());
-    $circles = $user->circles()
-        ->take(env("CIRCLES_PER_PAGE"))
-        ->skip(env("CIRCLES_PER_PAGE") * $page)
-        ->paginate(env("CIRCLES_PER_PAGE"));
-
-    if (count($circles) == 0) {
-
-        $bot->reply("Эх, а вы еще не состоите ни в одном кругу интересов... Может быть вы создадите его? /create");
-        return;
-    }
-    foreach ($circles as $circle) {
-
-        $keyboard = [
-
-            [
-                ["text" => "\xE2\x9D\x8EВыйти из круга", "callback_data" => "/leave_circle " . $circle->id],
-            ],
-        ];
-
-        $code = "003" . $circle->id;
-
-        $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
-
-        $numberToWords = new NumberToWords();
-        $numberTransformer = $numberToWords->getNumberTransformer('ru');
-
-        $peopleCountText = $numberTransformer->toWords($peopleCount);
-
-        $message = sprintf("[%s](https://t.me/%s?start=%s) - это ваш круг по интересам! Делитесь этим сообщением и расширяте круг людей\xF0\x9F\x98\x89\n\n_%s _\n\nВсего участников в кругу *%s (%s)*",
-            Str::ucfirst($circle->title),
-            env("APP_BOT_NAME"),
-            $code,
-            Str::ucfirst($circle->description),
-            $peopleCount,
-            $peopleCountText
-        );
-
-        $bot->sendRequest("sendMessage",
-            [
-                "chat_id" => "$id",
-                "text" => $message,
-                "parse_mode" => "Markdown",
-                'reply_markup' => json_encode([
-                    'inline_keyboard' =>
-                        $keyboard
-                ])
-            ]);
-
-    }
-
-
-    $inline_keyboard = [];
-
-    if ($page == 0 && count($circles) == env("CIRCLES_PER_PAGE"))
-        array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/my_circles " . ($page + 1)]);
-    if ($page > 0) {
-        if (count($circles) == 0) {
-            array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
-        }
-        if (count($circles) == env("CIRCLES_PER_PAGE")) {
-            array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
-            array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/my_circles " . ($page + 1)]);
-        }
-        if (count($circles) > 0 && count($circles) < env("CIRCLES_PER_PAGE")) {
-            array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
-        }
-    }
-
-    if (count($inline_keyboard) > 0)
-        $bot->sendRequest("sendMessage",
-            [
-                "chat_id" => "$id",
-                "text" => "Ну что, может посмотрим что-то еще?",
-                "parse_mode" => "Markdown",
-                'reply_markup' => json_encode([
-                    'inline_keyboard' =>
-                        $keyboard
-                ])
-            ]);
-
+    Base::myInterestCircles($bot, $page);
 
 })->stopsConversation();
 
@@ -123,23 +55,25 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
 
     $message = "
 Как начать:
-✔️ Определись с какими собеседниками тебе комфортнее общаться \xF0\x9F\x91\xA7 или \xF0\x9F\x91\xA6, а может быть это и вовсе не важно?
-✔️ Укажи свой регион проживания - ведь проще выпить чашечку \xE2\x98\x95 с людьми поблизости;) 
-✔    И сколько встреч в неделю ты осилишь?) \x31\xE2\x83\xA3, \x32\xE2\x83\xA3 или может быть \x33\xE2\x83\xA3?    
+\xF0\x9F\x94\xB8Определитесь с какими собеседниками комфортнее общаться \xF0\x9F\x91\xA7 или \xF0\x9F\x91\xA6, а может быть это и вовсе не важно?
+\xF0\x9F\x94\xB8Укажите свой регион проживания - ведь проще выпить чашечку \xE2\x98\x95 с людьми поблизости;) 
+\xF0\x9F\x94\xB8И сколько встреч в неделю желаете?) \x31\xE2\x83\xA3, \x32\xE2\x83\xA3 или может быть \x33\xE2\x83\xA3?    
 
 Краткая инструкция:
-✔️ Каждый раз ты будешь получать от меня сообщение c контактами нового человека для встречи.
-✔️ Напиши своему собеседнику в Telegram, чтобы договориться о встрече или звонке. 
-✔️ Время и место вы выбираете сами.
-✔️ Не откладывай, договаривайся о встрече сразу.
-✔️ Собеседник не отвечает? Напиши мне в чате, и я подберу тебе новую пару.   
-✔️ За день до новой встречи я поинтересуюсь, участвуешь ли ты, и как прошла твоя предыдущая встреча.
-✔️ Если захочешь отказаться от участия совсем, напиши мне в ответ.\n
+\xF0\x9F\x94\xB8Каждый раз вы будете получать от меня сообщение c контактами нового человека для встречи.
+\xF0\x9F\x94\xB8Напишите своему собеседнику в Telegram, чтобы договориться о встрече или звонке. 
+\xF0\x9F\x94\xB8Время и место вы выбираете сами.
+\xF0\x9F\x94\xB8е откладывайте, договаривайтесь о встрече сразу.
+\xF0\x9F\x94\xB8Собеседник не отвечает? Напишите мне в чате, и я подберу нового собеседника.   
+\xF0\x9F\x94\xB8За день до новой встречи я поинтересуюсь, участвуете ли вы, и как прошла ваша предыдущая встреча.
+\xF0\x9F\x94\xB8Если нет желания встречаться - напиши /stop.\n
 
-Если у тебя есть вопросы или предложения — пиши мне в этом чате.
+Если есть вопросы или предложения — пишите мне в этом чате.
 
 /settings - настройка комфорта встреч 
 /crules - правила кругов интересов
+
+Желаете найти собеседника здесь и сейчас? - тогда отправляйте свою локацию \xF0\x9F\x93\x8D или транслируйте её \xE2\x8F\xB3 - пока вас видят - вы видите других\xF0\x9F\x98\x89
     ";
 
 
@@ -187,6 +121,7 @@ $botman->hears('/leave_circle ([0-9a-zA-Z-]{36})', function ($bot, $circleId) {
 
     $user = (User::with(["circles"])->where("telegram_chat_id", $id)->first());
     $user->circles()->detach([$circleId]);
+    $user->save();
 
     $circle = Circle::where("id", $circleId)->first();
 
@@ -319,15 +254,53 @@ $botman->hears('.*Настройки?|/settings', function ($bot) {
 Если вдруг вы ошибочного выбрали свой собственный пол, то его тоже легко можно поменять:
 /i_am_man - собседники будут воспринимать вас как мужчину (парня) " . ($user->sex == 1 ? "\xE2\x9C\x85" : "") . "
 /i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
+
+/addition_settings - дополнительные настройки
     ";
 
-   $bot->sendRequest("sendMessage",
+    $bot->sendRequest("sendMessage",
         [
             "chat_id" => "$id",
             "text" => $message,
         ]);
 
 })->stopsConversation();
+
+$botman->hears('/addition_settings', function ($bot) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $message = "
+Предлагаем вам дополнительно настроить параметры гео-локации:
+
+Настраиваем радиус поиска ближайшего собеседника
+/in_range_500 - до 500 метров " . (true ? "\xE2\x9C\x85" : "") . "
+/in_range_1000 - до 1 км " . (false ? "\xE2\x9C\x85" : "") . "
+/in_range_2000 - до 2х км " . (false ? "\xE2\x9C\x85" : "") . "
+/in_range_3000 - до 3х км " . (false ? "\xE2\x9C\x85" : "") . "
+
+Настравиваем время ожидания подбора собеседника
+
+/in_time_5 - до 5 минут " . (true ? "\xE2\x9C\x85" : "") . "
+/in_time_10 - до 10 минут " . (false ? "\xE2\x9C\x85" : "") . "
+/in_time_15 - до 15 минут " . (false ? "\xE2\x9C\x85" : "") . "
+
+Каких собеседников подбираем?
+
+/city_my - только из моего города " . (false ? "\xE2\x9C\x85" : "") . "
+/city_all - со всех городов " . (true ? "\xE2\x9C\x85" : "") . "
+    ";
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => $message,
+        ]);
+
+})->stopsConversation();
+
 
 $botman->hears('.*Раздел администратора|/admin', function ($bot) {
 
@@ -385,6 +358,26 @@ $botman->hears('.*Раздел администратора|/admin', function ($
 
 $botman->hears('.*Тех. поддержка|.*заявка.*', BotManController::class . '@startRequestWithMessage')->stopsConversation();
 
+$botman->receivesImages(function($bot, $images) {
+    $bot->reply("Изображения еще не принимаюсят:( Но мы над этим работаем!");
+    foreach ($images as $image) {
+
+        $url = $image->getUrl(); // The direct url
+        $title = $image->getTitle(); // The title, if available
+        $payload = $image->getPayload(); // The original payload
+    }
+});
+
+$botman->receivesAudio(function($bot, $audios) {
+
+    $bot->reply("Голосовые сообщения еще не принимаюсят:( Но мы над этим работаем!");
+    foreach ($audios as $audio) {
+
+        $url = $audio->getUrl(); // The direct url
+        $payload = $audio->getPayload(); // The original payload
+    }
+});
+
 $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
     $messages = [
         "Спасибо что пишите мне!",
@@ -394,7 +387,11 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         "Каждое сообщение будет услышано!",
     ];
 
+    Base::initUser($bot);
+
     $json = json_decode($bot->getMessage()->getPayload());
+
+    Log::info(print_r($json,true));
 
     $find = false;
     if (isset($json->contact)) {
@@ -414,6 +411,8 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
             $user->phone = json_encode($phones);
             $user->save();
         }
+
+
         $find = true;
         $toEmail = env('MAIL_ADMIN');
         Mail::to($toEmail)->send(new FeedbackMail([
@@ -429,19 +428,73 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $data = YaGeo::setQuery($location->latitude . ',' . $location->longitude)->load();
         $city = $data->getResponse()->getLocality();
 
-
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
-
-        $bot->reply("Заявка успешно принята! Мы свяжемся с вами в течение 10 минут!");
 
         $user = User::where("telegram_chat_id", $id)->first();
         $user->location = json_encode([
             "latitude" => $location->latitude,
             "longitude" => $location->longitude,
-            "city" => $city ?? null
+            "city" => $city ?? null,
+            "last_seen" => new Carbon("+3")
         ]);
-        $user->save();
+
+        $nearest = User::getNearestUsers($location->latitude, $location->longitude);
+
+
+        if (count($nearest) === 0) {
+            $message =  "Увы, в данную минуту никого поблизости нет\xF0\x9F\x98\xA2, если в течении <b>5 минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
+
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => "$id",
+                    "text" => $message,
+                    "parse_mode" => "HTML",
+                ]);
+
+        }
+
+        else {
+
+            $nearest_user = $nearest->random(1)->first();
+            $message_1 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @".$user->name;
+            $message_2 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @".$nearest_user->name;
+
+            $nu_location = json_decode($nearest_user->location);
+            $nu_location->last_seen = null;
+
+            $u_location = json_decode($user->location);
+            $u_location->last_seen = null;
+
+            $nearest_user->location = json_encode($nu_location);
+            $user->location = json_encode($u_location);
+            $nearest_user->save();
+            $user->save();
+
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => $nearest_user->telegram_chat_id,
+                    "text" => $message_1,
+                    "parse_mode" => "Markdown",
+                ]);
+
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => $id,
+                    "text" => $message_2,
+                    "parse_mode" => "Markdown",
+                ]);
+        }
+
+
+        ///todo: отправлять аудио и фото сообщение
+
+
+
+
+
+
+        $find = true;
     }
 
     if (!$find) {

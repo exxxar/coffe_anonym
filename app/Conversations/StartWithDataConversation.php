@@ -47,7 +47,7 @@ class StartWithDataConversation extends Conversation
     {
 
         $admin = User::where("telegram_chat_id", $this->current_user_id)->first();
-
+        $message = null;
         $arg1 = substr($this->command, 0, 3);
         $arg2 = substr($this->command, 3, 36);
 
@@ -74,11 +74,12 @@ class StartWithDataConversation extends Conversation
             case "003":
                 Base::initUser($this->bot, $arg2);
                 Base::inviteToCircle($this->bot, $arg2);
+                $message = "Ну, что ж... теперь и вы в теме;)";
                 break;
         }
 
         if (!$flag)
-            Base::start($this->bot);
+            Base::start($this->bot, $message);
 
 
     }
@@ -102,7 +103,7 @@ class StartWithDataConversation extends Conversation
                 [
                     "chat_id" => $user_chat_id,
                     "parse_mode" => "markdown",
-                    "text" => "*Ответ от администратора:*\n".$message,
+                    "text" => "*Ответ от администратора:*\n" . $message,
                 ]);
 
         });

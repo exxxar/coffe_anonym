@@ -7,6 +7,7 @@ namespace App\Classes;
 use App\Circle;
 use App\User;
 use App\UserInCircle;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberToWords\NumberToWords;
 
@@ -66,66 +67,65 @@ class Base
         ];
     }
 
-    public static function inviteToCircle($bot,$circleId){
+    public static function inviteToCircle($bot, $circleId)
+    {
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
+
 
         $user = User::where("telegram_chat_id", $id)->first();
 
         $circle = Circle::where("id", env("FIRST_CIRCLE_ID"))->first();
 
-        if (is_null($circle)){
+        if (is_null($circle)) {
             $bot->reply("Хм, я почему-то не могу найти этот круг по интересам, но вы можете его создать => /create");
             return;
         }
 
-        $userInCircle = UserInCircle::where("circle_id",$circleId)
-            ->where("user_id",$user->id)
-            ->first() != null;
+        $userInCircle = UserInCircle::where("circle_id", $circleId)
+                ->where("user_id", $user->id)
+                ->first() != null;
 
-        if ($userInCircle){
+        if ($userInCircle) {
             $bot->reply("Вы и так в этом кругу, но вы всегда можете создать что-то своё => /create");
             return;
         }
 
-        if (!$userInCircle) {
-            $user->circles()->attach($circleId);
 
-            $keyboard = [
+        $user->circles()->attach($circleId);
 
-                [
-                    ["text" => "\xE2\x9D\x8EВыйти из круга", "callback_data" => "/leave_circle " . $circle->id],
-                ],
-            ];
+        $keyboard = [
 
-            $code = "003" . $circle->id;
+            [
+                ["text" => "\xE2\x9D\x8EВыйти из круга", "callback_data" => "/leave_circle " . $circle->id],
+            ],
+        ];
 
-            $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
+        $code = "003" . $circle->id;
 
-            $numberToWords = new NumberToWords();
-            $numberTransformer = $numberToWords->getNumberTransformer('ru');
+        $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
 
-            $peopleCountText = $numberTransformer->toWords($peopleCount);
+        $numberToWords = new NumberToWords();
+        $numberTransformer = $numberToWords->getNumberTransformer('ru');
 
-            $message = sprintf("[%s](https://t.me/%s?start=%s) - это ваш круг по интересам! Делитесь этим сообщением и расширяте круг людей\xF0\x9F\x98\x89\n\n_%s _\n\nВсего участников в кругу *%s (%s)*",
-                Str::ucfirst($circle->title),
-                env("APP_BOT_NAME"),
-                $code,
-                Str::ucfirst($circle->description),
-                $peopleCount,
-                $peopleCountText
-            );
-            $bot->sendRequest("sendMessage",
-                [
-                    "chat_id" => env("TELEGRAM_ADMIN_CHANNEL"),
-                    "parse_mode" => "markdown",
-                    "text" => $message,
-                    'reply_markup' => json_encode([
-                        'inline_keyboard' =>
-                            $keyboard
-                    ])
-                ]);
-            }
+        $peopleCountText = $numberTransformer->toWords($peopleCount);
+
+        $message = sprintf("[%s](https://t.me/%s?start=%s) - теперь это и ваш круг по интересам! Делитесь этим сообщением и расширяте круг людей\xF0\x9F\x98\x89",
+            Str::ucfirst($circle->title),
+            env("APP_BOT_NAME"),
+            $code
+        );
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => $id,
+                "parse_mode" => "markdown",
+                "text" => $message,
+                "disable_web_page_preview" => true,
+                'reply_markup' => json_encode([
+                    'inline_keyboard' =>
+                        $keyboard
+                ])
+            ]);
 
 
     }
@@ -173,9 +173,17 @@ class Base
         $id = $telegramUser->getId();
 
 
-        $keyboard = [
-            ["\xF0\x9F\x92\xABКруги по интересам", "\xE2\x98\x9DКак пользоваться?"],
-        ];
+        $keyboard = [];
+
+        $now = date('Y-m-d');
+        $events = \App\MeetEvents::where('date_end', '>=', $now)
+            ->get();
+
+        if (count($events) > 0)
+            array_push($keyboard, ["\xE2\xAD\x90Встречи в рамках событий"]);
+
+        array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
+        array_push($keyboard, ["\xE2\x98\x9DКак пользоваться?"]);
 
         if (Base::isAdmin($bot))
             array_push($keyboard, ["\xF0\x9F\x93\x8AРаздел администратора"]);
@@ -226,12 +234,15 @@ class Base
         $id = $telegramUser->getId();
 
 
+        Base::myInterestCircles($bot);
+
         $keyboard = [
-            ["\xF0\x9F\x92\xABМои круги интересов", "\xF0\x9F\x8E\x88Новый круг интересов"],
-            [
+            // ["\xF0\x9F\x92\xABМои круги интересов"],
+            ["\xF0\x9F\x8E\x88Новый круг интересов"],
+            /*[
                 ["text" => "\xF0\x9F\x93\x8DОтправить свой город",
                     "request_location" => true]
-            ],
+            ],*/
             ["	\xF0\x9F\x91\x88Главное меню"],
         ];
 
@@ -284,11 +295,99 @@ class Base
     }
 
 
-    public static function start($bot)
+    public static function myInterestCircles($bot, $page = 0)
+    {
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $user = (User::with(["circles"])->where("telegram_chat_id", $id)->first());
+        $circles = $user->circles()
+            ->take(env("CIRCLES_PER_PAGE"))
+            ->skip(env("CIRCLES_PER_PAGE") * $page)
+            ->paginate(env("CIRCLES_PER_PAGE"));
+
+        if (count($circles) == 0) {
+
+            $bot->reply("Эх, а вы еще не состоите ни в одном кругу интересов... Может быть вы создадите его? /create");
+            return;
+        }
+        foreach ($circles as $circle) {
+
+            $code = "003" . $circle->id;
+
+            $keyboard = [
+                [
+                    ["text" => "\xE2\x9D\x8EВыйти из круга", "callback_data" => "/leave_circle " . $circle->id],
+                ],
+            ];
+
+            $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
+
+            $numberToWords = new NumberToWords();
+            $numberTransformer = $numberToWords->getNumberTransformer('ru');
+
+            $peopleCountText = $numberTransformer->toWords($peopleCount);
+
+            $message = sprintf("[%s](https://t.me/%s?start=%s) - это ваш круг по интересам! Делитесь этим сообщением и расширяте круг людей\xF0\x9F\x98\x89\n\n_%s _\n\nВсего участников в кругу *%s (%s)*",
+                Str::ucfirst($circle->title),
+                env("APP_BOT_NAME"),
+                $code,
+                Str::ucfirst($circle->description),
+                $peopleCount,
+                $peopleCountText
+            );
+
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => "$id",
+                    "text" => $message,
+                    "parse_mode" => "Markdown",
+                    "disable_web_page_preview" => true,
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' =>
+                            $keyboard
+                    ])
+                ]);
+
+        }
+
+
+        $inline_keyboard = [];
+
+        if ($page == 0 && count($circles) == env("CIRCLES_PER_PAGE"))
+            array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/my_circles " . ($page + 1)]);
+        if ($page > 0) {
+            if (count($circles) == 0) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
+            }
+            if (count($circles) == env("CIRCLES_PER_PAGE")) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
+                array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/my_circles " . ($page + 1)]);
+            }
+            if (count($circles) > 0 && count($circles) < env("CIRCLES_PER_PAGE")) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/my_circles " . ($page - 1)]);
+            }
+        }
+
+        if (count($inline_keyboard) > 0)
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => "$id",
+                    "text" => "Ну что, может посмотрим что-то еще?",
+                    "parse_mode" => "Markdown",
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' =>
+                            $keyboard
+                    ])
+                ]);
+
+    }
+
+    public static function start($bot, $message = null)
     {
 
 
-        $message = sprintf("
+        $message = is_null($message) ? sprintf("
     Привет!
 Это Кофе с Анонимом!\xE2\x98\x95
 
@@ -298,7 +397,7 @@ class Base
 
 Наши правила вы сможете прочитать тут /rules
 А сделать встречи более комфортными можно тут /settings
-");
+") : $message;
 
         Base::mainMenu($bot, $message);
 

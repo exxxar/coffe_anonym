@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Carbon\Carbon;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -69,5 +70,21 @@ class User extends Authenticatable
         return $this->hasMany(Meet::class, 'user2_id', 'id');
     }
 
+
+    public static function getNearestUsers($latitude, $longitude, $dist=0.5/*0.5км*/,$update_time=5)
+    {
+
+        $lon1 = $longitude - $dist / abs(cos(rad2deg($latitude)) * 111.0); # 1 градус широты = 111 км
+        $lon2 = $longitude + $dist / abs(cos(rad2deg($latitude)) * 111.0);
+        $lat1 = $latitude - ($dist / 111.0);
+        $lat2 = $latitude + ($dist / 111.0);
+
+        return User::whereBetween('location->latitude', [$lat1, $lat2])
+            ->whereBetween('location->longitude', [$lon1, $lon2])
+            ->where("location->last_seen",">", strtotime(Carbon::now("+3")->subMinute($update_time)))
+            ->get();
+
+
+    }
 
 }
