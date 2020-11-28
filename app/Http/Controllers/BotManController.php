@@ -6,6 +6,7 @@ use App\Conversations\CalcConversation;
 use App\Conversations\CircleConversation;
 use App\Conversations\MessagesConversation;
 use App\Conversations\RequestConversation;
+use App\Conversations\StartNewEventConversation;
 use App\Conversations\StartWithDataConversation;
 use BotMan\BotMan\BotMan;
 use http\Message;
@@ -41,6 +42,13 @@ class BotManController extends Controller
     {
         $bot->startConversation(new StartWithDataConversation($bot, $command));
     }
+
+    public function startNewEventConversation(BotMan $bot)
+    {
+        $bot->startConversation(new StartNewEventConversation($bot));
+    }
+
+
 
 
 

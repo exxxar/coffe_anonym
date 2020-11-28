@@ -18,9 +18,11 @@ class CreateMeetEventsTable extends Migration
             $table->increments('id');
             $table->string('title')->default('');
             $table->string('description')->default('');
+            $table->string('image_url',1000)->default('');
             $table->date('date_start')->nullable();
             $table->date('date_end')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
         Schema::enableForeignKeyConstraints();
 

@@ -5,8 +5,12 @@ namespace App\Classes;
 
 
 use App\Circle;
+use App\MeetEvents;
 use App\User;
 use App\UserInCircle;
+use App\UserOnEvent;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberToWords\NumberToWords;
@@ -211,6 +215,41 @@ class Base
             [
                 "chat_id" => "$id",
                 "text" => $message,
+                "parse_mode" => "HTML",
+                'reply_markup' => json_encode([
+                    'keyboard' => $keyboard,
+                    'one_time_keyboard' => false,
+                    'resize_keyboard' => true
+                ])
+            ]);
+
+    }
+
+    public static function adminMenu($bot, $message)
+    {
+        if (!Base::isValid($bot))
+            return;
+
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+
+        if (!Base::isAdmin($bot)) {
+            $bot->reply("Раздел недоступен");
+            return;
+        }
+
+        $keyboard = [];
+
+        array_push($keyboard, ["\xF0\x9F\x92\xABСтатистика"]);
+        array_push($keyboard, ["\xF0\x9F\x93\x8BСписок событий", "\xF0\x9F\x93\x86Добавить событие"]);
+        array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);
+        array_push($keyboard, ["\xF0\x9F\x91\x88Главное меню"]);
+
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => "$id",
+                "text" => $message,
                 "parse_mode" => "Markdown",
                 'reply_markup' => json_encode([
                     'keyboard' => $keyboard,
@@ -333,7 +372,7 @@ class Base
         $circles = $user->circles()
             ->take(env("CIRCLES_PER_PAGE"))
             ->skip(env("CIRCLES_PER_PAGE") * $page)
-            ->paginate(env("CIRCLES_PER_PAGE"));
+            ->get();
 
         if (count($circles) == 0) {
 
@@ -406,7 +445,108 @@ class Base
                     "parse_mode" => "Markdown",
                     'reply_markup' => json_encode([
                         'inline_keyboard' =>
+                            $inline_keyboard
+                    ])
+                ]);
+
+    }
+
+    public static function meetEventsList($bot, $page = 0, $is_admin = false)
+    {
+        if (!Base::isValid($bot))
+            return;
+
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $user = User::where("telegram_chat_id", $id)->first();
+
+        $events = MeetEvents::where("date_end", ">", Carbon::now("+3"))
+            ->take(env("EVENTS_PER_PAGE"))
+            ->skip(env("EVENTS_PER_PAGE") * $page)
+            ->get();
+
+        if (count($events) == 0) {
+
+            $bot->reply("Эх, глобальных событий еще нет...");
+            return;
+        }
+        foreach ($events as $event) {
+
+            $on_event = UserOnEvent::where("event_id", $event->id)
+                    ->where("user_id", $user->id)
+                    ->first() != null;
+
+            $keyboard = [
+            ];
+
+            if ($on_event)
+                array_push($keyboard, [["text" => "	\xE2\x9D\x8EНе участвовать", "callback_data" => "/exit_event " . $event->id]]);
+            else
+                array_push($keyboard, [["text" => "\xE2\x9C\x85Участовать", "callback_data" => "/enter_event " . $event->id]]);
+
+            if ($is_admin) {
+                array_push($keyboard, [
+                    ["text" => "\xE2\x9D\x8EУдалить событие", "callback_data" => "/remove_event " . $event->id],
+                ]);
+            }
+
+            $people_in_event = UserInCircle::select(DB::raw('id, event_id ,count(*) as count'))
+                ->where("event_id", $event->id)
+                ->orderBy('count', 'desc')
+                ->groupBy('event_id')
+                ->first();
+
+            $message = sprintf("*%s*\n_%s_\nУчаствует в событии: *%s*\nНачало: *%s*\nКонецк: %s",
+                $event->title,
+                $event->description,
+                ($people_in_event ?? 0),
+                $event->date_start,
+                $event->date_end
+            );
+
+            $bot->sendRequest("sendPhoto",
+                [
+                    "chat_id" => "$id",
+                    "photo" => $event->image_url ?? "https://sun9-27.userapi.com/impg/1CcReZ74SVCCfAwMFGYM0QdsdxC7DnQ4cJzHZA/fn56wSggReQ.jpg",
+                    "caption" => $message,
+                    "parse_mode" => "Markdown",
+                    "disable_web_page_preview" => true,
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' =>
                             $keyboard
+                    ])
+                ]);
+
+        }
+
+
+        $inline_keyboard = [];
+
+        if ($page == 0 && count($events) == env("EVENTS_PER_PAGE"))
+            array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/meet_events " . ($page + 1)]);
+        if ($page > 0) {
+            if (count($events) == 0) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/meet_events " . ($page - 1)]);
+            }
+            if (count($events) == env("EVENTS_PER_PAGE")) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/meet_events " . ($page - 1)]);
+                array_push($inline_keyboard, ['text' => "Следующая страница", 'callback_data' => "/meet_events " . ($page + 1)]);
+            }
+            if (count($events) > 0 && count($events) < env("EVENTS_PER_PAGE")) {
+                array_push($inline_keyboard, ['text' => "Предидущая страница", 'callback_data' => "/meet_events " . ($page - 1)]);
+            }
+        }
+
+        if (count($inline_keyboard) > 0)
+            $bot->sendRequest("sendMessage",
+                [
+                    "chat_id" => "$id",
+                    "text" => "Ну что, может посмотрим что-то еще?",
+                    "parse_mode" => "Markdown",
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' =>
+                            $inline_keyboard
                     ])
                 ]);
 

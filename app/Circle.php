@@ -19,8 +19,21 @@ class Circle extends Model
         'id'=>"string",
     ];
 
+    protected $appends = [
+      'users_count'
+    ];
+
     public function creator()
     {
         return $this->hasOne(User::class, 'id', 'creator_id');
+    }
+
+    public function users(){
+       return $this->belongsToMany(User::class, 'user_in_circles', 'user_id', 'circle_id')
+            ->withTimestamps();
+    }
+
+    public function getUsersCountAttribute(){
+        return $this->users()->count();
     }
 }

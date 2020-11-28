@@ -3,6 +3,7 @@
 use App\Circle;
 use App\Http\Controllers\BotManController;
 use App\Mail\FeedbackMail;
+use App\MeetEvents;
 use App\User;
 use App\UserInCircle;
 use Carbon\Carbon;
@@ -145,6 +146,7 @@ $botman->hears('/leave_circle ([0-9a-zA-Z-]{36})', function ($bot, $circleId) {
 })->stopsConversation();
 
 $botman->hears('/create|.*Новый круг интересов', BotManController::class . '@startCircleConversation');
+$botman->hears('/new_event|.*Добавить событие', BotManController::class . '@startNewEventConversation');
 
 $botman->hears('/i_am_([a-zA-Z]+)', function ($bot, $type) {
     $telegramUser = $bot->getUser();
@@ -325,7 +327,6 @@ $botman->hears('/city_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $type)
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
-    Log::info(print_r($bot->getMessage()->getPayload(), true));
 
     $city_array = ["my" => 0, "all" => 1];
 
@@ -356,35 +357,41 @@ $botman->hears('/city_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $type)
 
 })->stopsConversation();
 
-$botman->hears('.*Раздел администратора|/admin', function ($bot) {
-
-    $telegramUser = $bot->getUser();
-    $id = $telegramUser->getId();
-
+$botman->hears('/statistic|.*Статистика', function ($bot) {
     if (!Base::isAdmin($bot)) {
         $bot->reply("Раздел недоступен");
         return;
     }
 
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
     $users_in_bd = User::all()->count();
     $circle_in_bd = Circle::all()->count();
-
-    $most_popular_circles = Circle::orderBy('count', 'desc')
-        ->select(DB::raw('id, title,count(*) as count'))
-        ->groupBy('count')
-        ->take(20)
+    $events_in_bd = MeetEvents::all()->count();
+    $active_events_in_bd = MeetEvents::where("date_end", ">", Carbon::now("+3"))->count();
+    $last_added_events = MeetEvents::where("date_end", ">", Carbon::now("+3"))
+        ->orderBy('id', 'desc')
         ->skip(0)
+        ->take(20)
         ->get();
 
+    $most_popular_circles = UserInCircle::with(["circle"])
+        ->select(DB::raw('id, circle_id ,count(*) as count'))
+        ->orderBy('count', 'desc')
+        ->groupBy('circle_id')
+        ->skip(0)
+        ->take(20)
+        ->get();
 
-    $most_popular_circles_text = "";
+    $most_popular_circles_text = count($most_popular_circles)==0?"Кругов нет":"";
     $numberToWords = new NumberToWords();
     $numberTransformer = $numberToWords->getNumberTransformer('ru');
 
     foreach ($most_popular_circles as $index => $item)
         $most_popular_circles_text .= sprintf("%s) %s %s (%s) человек\n",
             $index + 1,
-            $item->title,
+            $item->circle->title,
             $item->count,
             $numberTransformer->toWords($item->count)
         );
@@ -395,7 +402,7 @@ $botman->hears('.*Раздел администратора|/admin', function ($
         ->skip(0)
         ->get();
 
-    $last_added_circles_text = "";
+    $last_added_circles_text = count($last_added_circles)==0?"Кругов нет":"";
     foreach ($last_added_circles as $index => $item)
         $last_added_circles_text .= sprintf("%s) %s _%s_\n",
             $index + 1,
@@ -403,50 +410,134 @@ $botman->hears('.*Раздел администратора|/admin', function ($
             $item->create_at
         );
 
+    $last_added_events_text = count($last_added_events)==0?"Событий нет":"";
+    foreach ($last_added_events as $index => $item)
+        $last_added_events_text .= sprintf("%s) %s от %s до %s\n",
+            $index + 1,
+            $item->title,
+            $item->date_start,
+            $item->date_end
+        );
+
+
+
     $users_in_bd_day = User::whereDate('created_at', Carbon::today())
         ->orderBy("id", "DESC")
         ->get()
         ->count();
 
     $message = sprintf("Всего пользователей в бд: %s
-    Пользователей за день:%s
-    Всего кругов интересов:%s
-    20 самых популряных кругов:
-    _%s_
-    
-    20 последних добавленных кругов:
-    _%s_
+Пользователей за день: %s
+Всего кругов интересов: %s
+Всего событий: %s
+Всего активных событий: %s
+
+20 самых популряных кругов:
+_%s_
+20 последних добавленных кругов:
+_%s_
+20 последних добавленных событий:
+_%s_
     ",
         $users_in_bd,
         $users_in_bd_day,
         $circle_in_bd,
+        $events_in_bd,
+        $active_events_in_bd,
         $most_popular_circles_text,
-        $last_added_circles_text
+        $last_added_circles_text,
+        $last_added_events_text
     );
 
-    $keyboard = [
-
-        [
-            ["text" => "Рассылка всем", "callback_data" => "/send_to_all"]
-        ],
-        [
-            ["text" => "Управление событиями", "callback_data" => "/meetevents"]
-        ],
-
-    ];
 
     $bot->sendRequest("sendMessage",
         [
             "chat_id" => "$id",
             "text" => $message,
             "parse_mode" => "Markdown",
-            'reply_markup' => json_encode([
-                'inline_keyboard' =>
-                    $keyboard
-            ])
+
         ]);
+});
+
+$botman->hears('.*Список событий|.*Встречи в рамках событий|/meet_events ([0-9]+)', function ($bot, $page = 0) {
+    Base::meetEventsList($bot, $page, Base::isAdmin($bot));
+})->stopsConversation();
+
+$botman->hears('/remove_event ([0-9]+)', function ($bot, $id) {
+    if (!Base::isAdmin($bot)) {
+        $bot->reply("Раздел недоступен");
+        return;
+    }
+
+    $event = MeetEvents::find($id);
+    $event->delete();
+    $bot->reply("Событие успешно завершено!");
+
+})->stopsConversation();
+
+$botman->hears('/enter_event ([0-9]+)', function ($bot, $eventId) {
+
+    $event = MeetEvents::find($eventId);
+
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    if (is_null($event)) {
+        $bot->reply("Хм, событие не найдено...");
+        return;
+    }
+
+    $user = User::with(["events"])->where("telegram_chat_id", $id)->first();
+
+    $on_event = \App\UserOnEvent::where("user_id", $user->id)
+            ->where("event_id", $event->id)
+            ->first() != null;
+
+    if ($on_event) {
+        $bot->reply("Хм, вы уже участвуете в событии!");
+        return;
+    }
+
+    $user->events()->attach([$eventId]);
+    $bot->reply("Отлично! Мы рады что вы участвуете в событии!");
+
+})->stopsConversation();
+
+$botman->hears('/leave_event ([0-9]+)', function ($bot, $eventId) {
+
+    $event = MeetEvents::find($eventId);
+
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    if (is_null($event)) {
+        $bot->reply("Хм, событие не найдено...");
+        return;
+    }
+
+    $user = User::with(["events"])->where("telegram_chat_id", $id)->first();
+
+    $on_event = \App\UserOnEvent::where("user_id", $user->id)
+            ->where("event_id", $event->id)
+            ->first() != null;
+
+    if (!$on_event) {
+        $bot->reply("Хм, вы и так не участвуете в событии!");
+        return;
+    }
+
+    $user->events()->detach([$eventId]);
+    $bot->reply("Жаль, конечно, но это ваш выбор!)");
+
+})->stopsConversation();
+
+$botman->hears('.*Рассылка всем|/send_to_all', function ($bot) {
+    $bot->reply("Массовая рассылка");
+})->stopsConversation();
 
 
+$botman->hears('.*Раздел администратора|/admin', function ($bot) {
+    Base::adminMenu($bot, "Добро пожаловать в раздел Администратора");
 })->stopsConversation();
 
 $botman->receivesImages(function (\BotMan\BotMan\BotMan $bot, $images) {
@@ -465,6 +556,10 @@ $botman->receivesImages(function (\BotMan\BotMan\BotMan $bot, $images) {
         $id = $telegramUser->getId();
 
         $user = User::where("telegram_chat_id", $id)->first();
+
+        $bot->userStorage()->save([
+            'image_url' => $url
+        ]);
 
         $keyboard = [
             [

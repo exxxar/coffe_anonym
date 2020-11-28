@@ -8,6 +8,7 @@ class Meet extends Model
 {
     //
 
+
     protected $fillable = [
         'id',
         'user1_id',
