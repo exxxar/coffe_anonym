@@ -9,8 +9,10 @@ class Circle extends Model
     protected $fillable = [
         'id',
         'title',
+        'settings',
         'description',
         'creator_id',
+        'create_at',
     ];
 
     protected $casts = [

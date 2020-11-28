@@ -15,6 +15,9 @@ class Base
 {
     public static function initUser($bot, $circleId = null)
     {
+        if (!Base::isValid($bot))
+            return;
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -28,7 +31,7 @@ class Base
             $userId = (string)Str::uuid();
             User::create([
                 'id' => $userId,
-                'name' => $username,
+                'name' => $username ?? $userId,
                 'email' => "$id@t.me",
                 'password' => bcrypt($id),
                 'fio_from_telegram' => "$firstName $lastName",
@@ -69,6 +72,9 @@ class Base
 
     public static function inviteToCircle($bot, $circleId)
     {
+        if (!Base::isValid($bot))
+            return;
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -132,6 +138,9 @@ class Base
 
     public static function isAdmin($bot)
     {
+        if (!Base::isValid($bot))
+            return;
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
         $user = User::where("telegram_chat_id", $id)->first();
@@ -140,6 +149,8 @@ class Base
 
     public static function sendToAdminChannel($bot, $message)
     {
+        if (!Base::isValid($bot))
+            return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -168,6 +179,8 @@ class Base
 
     public static function mainMenu($bot, $message)
     {
+        if (!Base::isValid($bot))
+            return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -182,10 +195,12 @@ class Base
         if (count($events) > 0)
             array_push($keyboard, ["\xE2\xAD\x90Встречи в рамках событий"]);
 
-        array_push($keyboard, [
-            ["text" => "\xF0\x9F\x93\x8DМоментальная встреча",
-                "request_location" => true]
-        ]);
+        if (User::all()->count() > 1000)
+            array_push($keyboard, [
+                ["text" => "\xF0\x9F\x93\x8DМоментальная встреча",
+                    "request_location" => true]
+            ]);
+
         array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
         array_push($keyboard, ["\xE2\x98\x9DКак пользоваться?"]);
 
@@ -208,6 +223,9 @@ class Base
 
     public static function dialogMenu($bot, $message)
     {
+
+        if (!Base::isValid($bot))
+            return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -233,6 +251,8 @@ class Base
 
     public static function profileMenu($bot, $message)
     {
+        if (!Base::isValid($bot))
+            return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -267,6 +287,8 @@ class Base
 
     public static function checkSex($bot)
     {
+        if (!Base::isValid($bot))
+            return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -301,6 +323,9 @@ class Base
 
     public static function myInterestCircles($bot, $page = 0)
     {
+        if (!Base::isValid($bot))
+            return;
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -389,7 +414,8 @@ class Base
 
     public static function start($bot, $message = null)
     {
-
+        if (!Base::isValid($bot))
+            return;
 
         $message = is_null($message) ? sprintf("
     Привет!
@@ -411,6 +437,7 @@ class Base
 
     public static function prepareAdditionalText($user)
     {
+
 
         $settings = json_decode(is_null($user->settings) ?
             json_encode([
@@ -481,6 +508,9 @@ class Base
 
     public static function editOrSend($bot, string $message)
     {
+        if (!Base::isValid($bot))
+            return;
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -503,6 +533,12 @@ class Base
                 "text" => $message->on_send ?? '',
                 "parse_mode" => "HTML",
             ]);
+
+    }
+
+    public static function isValid($bot)
+    {
+        return (!isset($bot->getMessage()->getPayload()["sender_chat"]));
 
     }
 }

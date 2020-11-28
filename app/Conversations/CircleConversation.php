@@ -69,9 +69,16 @@ class CircleConversation extends Conversation
 
             $description = $answer->getText();
 
-            if (str_word_count($description) <= 3) {
+            if (str_word_count( iconv("UTF-8", "windows-1251",$description)) <= 3) {
                 $this->bot->reply("Слишком короткое описание для такого грандиозного замысла;)");
-                $this->askTitle();
+                $this->askDescription($title);
+                return;
+            }
+
+            if (mb_strlen($description)>=255){
+                $len = mb_strlen($description);
+                $this->bot->reply("Краткость - сестра таланта! Вмести описание в 255 символов, ибо сейчас аж... $len символов");
+                $this->askDescription($title);
                 return;
             }
 

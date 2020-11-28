@@ -99,12 +99,22 @@ class StartWithDataConversation extends Conversation
                 return;
             }
 
-            $this->bot->sendRequest("sendMessage",
-                [
-                    "chat_id" => $user_chat_id,
-                    "parse_mode" => "markdown",
-                    "text" => "*Ответ от администратора:*\n" . $message,
-                ]);
+            $user = User::where("telegram_chat_id", $user_chat_id)->first();
+
+            try {
+
+                $this->bot->sendRequest("sendMessage",
+                    [
+                        "chat_id" => $user_chat_id,
+                        "parse_mode" => "markdown",
+                        "text" => "*Ответ от администратора:*\n" . $message,
+                    ]);
+
+                $this->bot->reply("Ответ успешно отправлен пользователю: " . $user->name);
+
+            } catch (\Exception $e) {
+                $this->bot->reply("Ответ не доставлен пользователю: " . $user->name);
+            }
 
         });
     }

@@ -19,6 +19,7 @@ class CreateCirclesTable extends Migration
             $table->uuid('id')->primary();
             $table->string('title')->default('');
             $table->string('description')->default('');
+            $table->json('settings')->nullable();
             $table->uuid('creator_id')->nullable();
 
             $table->timestamps();

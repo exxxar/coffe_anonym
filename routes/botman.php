@@ -6,6 +6,7 @@ use App\Mail\FeedbackMail;
 use App\User;
 use App\UserInCircle;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -54,7 +55,7 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
-   $bot->userStorage()->delete();
+    $bot->userStorage()->delete();
 
     $message = "
     
@@ -73,7 +74,7 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
 \xF0\x9F\x94\xB8За день до новой встречи я поинтересуюсь, участвуете ли вы, и как прошла ваша предыдущая встреча.
 \xF0\x9F\x94\xB8Если нет желания встречаться - напиши /stop.\n
 
-Если есть вопросы или предложения — пишите мне в этом чате (голосовые и изображения тоже принимаются).
+Если есть вопросы или предложения — пишите мне в этом чате (голосовые и изображения тоже принимаются), ваш вопрос должен быть не меньше *10 символов!*.
 
 /settings - настройка комфорта встреч 
 /crules - правила кругов интересов
@@ -97,8 +98,8 @@ $botman->hears('/crules', function ($bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
-   $bot->userStorage()->delete();
-    
+    $bot->userStorage()->delete();
+
     $message = "
     Некоторые особенности *кругов по интересам:*
 \xF0\x9F\x94\xB8 _круг интересов можно создать => /create_
@@ -366,19 +367,61 @@ $botman->hears('.*Раздел администратора|/admin', function ($
     }
 
     $users_in_bd = User::all()->count();
-    $with_phone_number = User::whereNotNull("phone")->get()->count();
-    $without_phone_number = User::whereNull("phone")->get()->count();
+    $circle_in_bd = Circle::all()->count();
+
+    $most_popular_circles = Circle::orderBy('count', 'desc')
+        ->select(DB::raw('id, title,count(*) as count'))
+        ->groupBy('count')
+        ->take(20)
+        ->skip(0)
+        ->get();
+
+
+    $most_popular_circles_text = "";
+    $numberToWords = new NumberToWords();
+    $numberTransformer = $numberToWords->getNumberTransformer('ru');
+
+    foreach ($most_popular_circles as $index => $item)
+        $most_popular_circles_text .= sprintf("%s) %s %s (%s) человек\n",
+            $index + 1,
+            $item->title,
+            $item->count,
+            $numberTransformer->toWords($item->count)
+        );
+
+
+    $last_added_circles = Circle::orderBy('created_at', 'desc')
+        ->take(20)
+        ->skip(0)
+        ->get();
+
+    $last_added_circles_text = "";
+    foreach ($last_added_circles as $index => $item)
+        $last_added_circles_text .= sprintf("%s) %s _%s_\n",
+            $index + 1,
+            $item->title,
+            $item->create_at
+        );
 
     $users_in_bd_day = User::whereDate('created_at', Carbon::today())
         ->orderBy("id", "DESC")
         ->get()
         ->count();
 
-    $message = sprintf("Всего пользователей в бд: %s\nВсего оставили номер телефона:%s\nКол-во не оставивших телефон:%s \nПользователей за день:%s",
+    $message = sprintf("Всего пользователей в бд: %s
+    Пользователей за день:%s
+    Всего кругов интересов:%s
+    20 самых популряных кругов:
+    _%s_
+    
+    20 последних добавленных кругов:
+    _%s_
+    ",
         $users_in_bd,
-        $with_phone_number,
-        $without_phone_number,
-        $users_in_bd_day
+        $users_in_bd_day,
+        $circle_in_bd,
+        $most_popular_circles_text,
+        $last_added_circles_text
     );
 
     $keyboard = [
@@ -387,10 +430,7 @@ $botman->hears('.*Раздел администратора|/admin', function ($
             ["text" => "Рассылка всем", "callback_data" => "/send_to_all"]
         ],
         [
-            ["text" => "Список пользователей (с телефонами)", "callback_data" => "/users_list_1"]
-        ],
-        [
-            ["text" => "Список пользователей (без телефонов)", "callback_data" => "/users_list_2"]
+            ["text" => "Управление событиями", "callback_data" => "/meetevents"]
         ],
 
     ];
@@ -408,8 +448,6 @@ $botman->hears('.*Раздел администратора|/admin', function ($
 
 
 })->stopsConversation();
-
-$botman->hears('.*Тех. поддержка|.*заявка.*', BotManController::class . '@startRequestWithMessage')->stopsConversation();
 
 $botman->receivesImages(function (\BotMan\BotMan\BotMan $bot, $images) {
 
@@ -507,29 +545,14 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
     if (isset($json->contact)) {
         $phone = $json->contact->phone_number;
 
-        $tmp_phone = str_replace(["(", ")", "-", " "], "", $phone);
+        $bot->reply("Хм, а нам зачем он?)");
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => env("TELEGRAM_ADMIN_CHANNEL"),
+                "text" => "Хм, нам зачем-то отправили номер телефона: $phone",
+                "parse_mode" => "HTML"
+            ]);
 
-        $telegramUser = $bot->getUser();
-        $id = $telegramUser->getId();
-
-        $bot->reply("Заявка успешно принята! Мы свяжемся с вами в течение 10 минут!");
-
-        $user = User::where("telegram_chat_id", $id)->first();
-        $phones = json_decode($user->phone) ?? [];
-        if (!in_array($tmp_phone, $phones)) {
-            array_push($phones, $tmp_phone);
-            $user->phone = json_encode($phones);
-            $user->save();
-        }
-
-
-        $find = true;
-        $toEmail = env('MAIL_ADMIN');
-        Mail::to($toEmail)->send(new FeedbackMail([
-            "name" => ($telegramUser->getLastName() . " " . $telegramUser->getFirstName() ?? $telegramUser->getUsername() ?? $telegramUser->getId()),
-            "phone" => $tmp_phone,
-            "date" => (Carbon::now("+3"))
-        ]));
     }
 
     if (isset($json->location)) {
@@ -560,13 +583,14 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                     "chat_id" => "$id",
                     "text" => $message,
                     "parse_mode" => "HTML",
+                    "disable_notification" => true
                 ]);
 
         } else {
 
             $nearest_user = $nearest->random(1)->first();
-            $message_1 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @" . $user->name;
-            $message_2 = "Поблизости есть достойный собеседник, который тоже ищет встречи\xF0\x9F\x98\x8B\nНапишите ему @" . $nearest_user->name;
+            $message_1 = "Привет! Я ищу себе собеседника на \xF0\x9F\x98\x8B\nНапиши мне @" . $user->name;
+            $message_2 = "Привет! Я ищу себе собеседника на \xF0\x9F\x98\x8B\nНапиши мне @" . $nearest_user->name;
 
             $nu_location = json_decode($nearest_user->location);
             $nu_location->last_seen = null;
@@ -621,10 +645,12 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
         $noName = is_null($lastName) || is_null($firstName);
 
-        Base::sendToAdminChannel($bot, "*Сообщение от* [" .
-            (!$noName ? ($lastName ?? '') . " " . ($firstName ?? '') : $username)
-            . "](tg://user?id=" . $id . ") :\n_" . $bot->getMessage()->getText() . "_"
-        );
+        $text = $bot->getMessage()->getText();
+        if (mb_strlen($text) > 10)
+            Base::sendToAdminChannel($bot, "*Сообщение от* [" .
+                (!$noName ? ($lastName ?? '') . " " . ($firstName ?? '') : $username)
+                . "](tg://user?id=" . $id . ") :\n_" . $text . "_"
+            );
 
         $bot->reply($messages[rand(0, count($messages) - 1)]);
     }
