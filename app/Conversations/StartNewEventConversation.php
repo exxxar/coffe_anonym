@@ -89,7 +89,6 @@ class StartNewEventConversation extends Conversation
     }
 
 
-
     public function askDuration($title, $description)
     {
         $question = Question::create("Введите длительность в днях (событие начнется на следующий день после создания):")
@@ -128,7 +127,7 @@ class StartNewEventConversation extends Conversation
                 'image_url' => $this->bot->userStorage()->get('image_url') ?? null
             ]);
 
-
+            Base::sendToAdminChannel($this->bot, "Создано новое событие *$title*", false);
             Base::adminMenu($this->bot, "Вы успешно создали Новое событие!)");
 
         });

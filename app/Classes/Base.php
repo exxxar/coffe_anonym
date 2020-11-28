@@ -153,7 +153,7 @@ class Base
         return $user->is_admin ? true : false;
     }
 
-    public static function sendToAdminChannel($bot, $message)
+    public static function sendToAdminChannel($bot, $message, $need_keyboard = true)
     {
         if (!Base::isValid($bot))
             return;
@@ -165,11 +165,14 @@ class Base
 
 
         $keyboard = [
-            [
+
+        ];
+
+        if ($need_keyboard)
+            array_push($keyboard, [
                 ["text" => "\xE2\x9C\x8FНаписать пользователю", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "001" . $user->id],
                 ["text" => "\xE2\x98\x95Организовать встречу", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=" . "002" . $user->id]
-            ],
-        ];
+            ]);
 
         $bot->sendRequest("sendMessage",
             [
@@ -511,7 +514,7 @@ class Base
                 'chat_id' => $id,
                 "caption" => "$message",
                 'parse_mode' => 'Markdown',
-                'photo' => \Telegram\Bot\FileUpload\InputFile::create($event->image_url??"https://sun9-27.userapi.com/impg/1CcReZ74SVCCfAwMFGYM0QdsdxC7DnQ4cJzHZA/fn56wSggReQ.jpg?size=844x834&quality=96&proxy=1&sign=4eaa549b2320c609885c4b89b2d3ba56"),
+                'photo' => \Telegram\Bot\FileUpload\InputFile::create($event->image_url ?? "https://sun9-27.userapi.com/impg/1CcReZ74SVCCfAwMFGYM0QdsdxC7DnQ4cJzHZA/fn56wSggReQ.jpg?size=844x834&quality=96&proxy=1&sign=4eaa549b2320c609885c4b89b2d3ba56"),
                 'reply_markup' => json_encode([
                     'inline_keyboard' =>
                         $keyboard

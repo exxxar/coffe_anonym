@@ -386,7 +386,7 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
         ->take(20)
         ->get();
 
-    $most_popular_circles_text = count($most_popular_circles)==0?"Кругов нет":"";
+    $most_popular_circles_text = count($most_popular_circles) == 0 ? "Кругов нет" : "";
     $numberToWords = new NumberToWords();
     $numberTransformer = $numberToWords->getNumberTransformer('ru');
 
@@ -404,7 +404,7 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
         ->skip(0)
         ->get();
 
-    $last_added_circles_text = count($last_added_circles)==0?"Кругов нет":"";
+    $last_added_circles_text = count($last_added_circles) == 0 ? "Кругов нет" : "";
     foreach ($last_added_circles as $index => $item)
         $last_added_circles_text .= sprintf("%s) %s _%s_\n",
             $index + 1,
@@ -412,7 +412,7 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
             $item->create_at
         );
 
-    $last_added_events_text = count($last_added_events)==0?"Событий нет":"";
+    $last_added_events_text = count($last_added_events) == 0 ? "Событий нет" : "";
     foreach ($last_added_events as $index => $item)
         $last_added_events_text .= sprintf("%s) %s от %s до %s\n",
             $index + 1,
@@ -420,7 +420,6 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
             $item->date_start,
             $item->date_end
         );
-
 
 
     $users_in_bd_day = User::whereDate('created_at', Carbon::today())
@@ -473,8 +472,14 @@ $botman->hears('/remove_event ([0-9]+)', function ($bot, $id) {
         return;
     }
 
-    $event = MeetEvents::find($id);
+    $event = MeetEvents::where("id",$id)->first();
+
+    if (is_null($event)){
+        $bot->reply("Хм, событие не найдено!");
+        return;
+    }
     $event->delete();
+
     $bot->reply("Событие успешно завершено!");
 
 })->stopsConversation();
@@ -520,7 +525,7 @@ $botman->hears('/exit_event ([0-9]+)', function ($bot, $eventId) {
     }
 
     $user = User::with(["events"])->where("telegram_chat_id", $id)->first();
-Log::info("Test 1");
+    Log::info("Test 1");
     $on_event = \App\UserOnEvent::where("user_id", $user->id)
             ->where("event_id", $event->id)
             ->first() != null;

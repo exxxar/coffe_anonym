@@ -10,6 +10,8 @@ class MeetEvents extends Model
     //
     use SoftDeletes;
 
+    protected $table = "meet_events";
+
     protected $fillable = [
         'id',
         'title',
