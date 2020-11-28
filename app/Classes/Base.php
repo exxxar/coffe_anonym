@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use NumberToWords\NumberToWords;
+use Telegram\Bot\FileUpload\InputFile;
+use Telegram\Bot\Laravel\Facades\Telegram;
 
 class Base
 {
@@ -467,7 +469,6 @@ class Base
             ->get();
 
         if (count($events) == 0) {
-
             $bot->reply("Эх, глобальных событий еще нет...");
             return;
         }
@@ -491,32 +492,32 @@ class Base
                 ]);
             }
 
-            $people_in_event = UserInCircle::select(DB::raw('id, event_id ,count(*) as count'))
+            $people_in_event = UserOnEvent::select(DB::raw('id, event_id ,count(*) as count'))
                 ->where("event_id", $event->id)
                 ->orderBy('count', 'desc')
                 ->groupBy('event_id')
                 ->first();
 
-            $message = sprintf("*%s*\n_%s_\nУчаствует в событии: *%s*\nНачало: *%s*\nКонецк: %s",
+            $message = sprintf("*%s*\n_%s_\nУчаствует в событии: *%s*\nНачало: *%s*\nКонец: %s",
                 $event->title,
                 $event->description,
-                ($people_in_event ?? 0),
+                ($people_in_event->count ?? 0),
                 $event->date_start,
                 $event->date_end
             );
 
-            $bot->sendRequest("sendPhoto",
-                [
-                    "chat_id" => "$id",
-                    "photo" => $event->image_url ?? "https://sun9-27.userapi.com/impg/1CcReZ74SVCCfAwMFGYM0QdsdxC7DnQ4cJzHZA/fn56wSggReQ.jpg",
-                    "caption" => $message,
-                    "parse_mode" => "Markdown",
-                    "disable_web_page_preview" => true,
-                    'reply_markup' => json_encode([
-                        'inline_keyboard' =>
-                            $keyboard
-                    ])
-                ]);
+
+            Telegram::sendPhoto([
+                'chat_id' => $id,
+                "caption" => "$message",
+                'parse_mode' => 'Markdown',
+                'photo' => \Telegram\Bot\FileUpload\InputFile::create($event->image_url??"https://sun9-27.userapi.com/impg/1CcReZ74SVCCfAwMFGYM0QdsdxC7DnQ4cJzHZA/fn56wSggReQ.jpg?size=844x834&quality=96&proxy=1&sign=4eaa549b2320c609885c4b89b2d3ba56"),
+                'reply_markup' => json_encode([
+                    'inline_keyboard' =>
+                        $keyboard
+                ])
+            ]);
+
 
         }
 

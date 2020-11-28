@@ -16,5 +16,6 @@ class MeetEvents extends Model
         'description',
         'date_start',
         'date_end',
+        'image_url',
     ];
 }

@@ -11,6 +11,7 @@ use BotMan\BotMan\Messages\Conversations\Conversation;
 use BotMan\BotMan\Messages\Incoming\Answer;
 use BotMan\BotMan\Messages\Outgoing\Question;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class StartNewEventConversation extends Conversation
@@ -45,6 +46,7 @@ class StartNewEventConversation extends Conversation
 
         $this->ask($question, function (Answer $answer) {
 
+
             $title = $answer->getText();
 
             if (mb_strlen($title) <= 5) {
@@ -65,6 +67,7 @@ class StartNewEventConversation extends Conversation
 
         $this->ask($question, function (Answer $answer) use ($title) {
 
+
             $description = $answer->getText();
 
             if (str_word_count(iconv("UTF-8", "windows-1251", $description)) < 3) {
@@ -84,6 +87,8 @@ class StartNewEventConversation extends Conversation
 
         });
     }
+
+
 
     public function askDuration($title, $description)
     {
@@ -111,6 +116,8 @@ class StartNewEventConversation extends Conversation
 
             $circleId = (string)Str::uuid();
 
+
+            Log::info($this->bot->userStorage()->get('image_url') ?? 'test');
 
             MeetEvents::create([
                 'id' => $circleId,

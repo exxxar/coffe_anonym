@@ -503,7 +503,7 @@ $botman->hears('/enter_event ([0-9]+)', function ($bot, $eventId) {
 
 })->stopsConversation();
 
-$botman->hears('/leave_event ([0-9]+)', function ($bot, $eventId) {
+$botman->hears('/exit_event ([0-9]+)', function ($bot, $eventId) {
 
     $event = MeetEvents::find($eventId);
 
@@ -516,7 +516,7 @@ $botman->hears('/leave_event ([0-9]+)', function ($bot, $eventId) {
     }
 
     $user = User::with(["events"])->where("telegram_chat_id", $id)->first();
-
+Log::info("Test 1");
     $on_event = \App\UserOnEvent::where("user_id", $user->id)
             ->where("event_id", $event->id)
             ->first() != null;
@@ -525,7 +525,7 @@ $botman->hears('/leave_event ([0-9]+)', function ($bot, $eventId) {
         $bot->reply("Хм, вы и так не участвуете в событии!");
         return;
     }
-
+    Log::info("Test 2");
     $user->events()->detach([$eventId]);
     $bot->reply("Жаль, конечно, но это ваш выбор!)");
 

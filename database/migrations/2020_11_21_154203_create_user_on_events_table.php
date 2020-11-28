@@ -15,7 +15,7 @@ class CreateUserOnEventsTable extends Migration
     {
         Schema::disableForeignKeyConstraints();
         Schema::create('user_on_events', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->increments('id');
             $table->uuid('user_id');
             $table->uuid('event_id');
             $table->timestamps();
