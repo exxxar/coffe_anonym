@@ -195,7 +195,7 @@ class Base
         $keyboard = [];
 
         $now = date('Y-m-d');
-        $events = \App\MeetEvents::where('date_end', '>=', $now)
+        $events = \App\MeetEvents::where('date_end', '>', $now)
             ->get();
 
         if (count($events) > 0)

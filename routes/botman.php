@@ -370,6 +370,8 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
     $circle_in_bd = Circle::all()->count();
     $events_in_bd = MeetEvents::all()->count();
     $active_events_in_bd = MeetEvents::where("date_end", ">", Carbon::now("+3"))->count();
+    $spent_events_in_bd = MeetEvents::where("date_end", "<=", Carbon::now("+3"))->count();
+
     $last_added_events = MeetEvents::where("date_end", ">", Carbon::now("+3"))
         ->orderBy('id', 'desc')
         ->skip(0)
@@ -430,6 +432,7 @@ $botman->hears('/statistic|.*Статистика', function ($bot) {
 Пользователей за день: %s
 Всего кругов интересов: %s
 Всего событий: %s
+Всего завершенных событий: %s
 Всего активных событий: %s
 
 20 самых популряных кругов:
@@ -443,6 +446,7 @@ _%s_
         $users_in_bd_day,
         $circle_in_bd,
         $events_in_bd,
+        $spent_events_in_bd,
         $active_events_in_bd,
         $most_popular_circles_text,
         $last_added_circles_text,
