@@ -122,14 +122,13 @@ class GenerateMeetListener
                 'user2_id' => $tmp_tmu->id,
             ]);
 
-            $code_1 = "007" . $tmp_tmu->id;
-            $code_2 = "007" . $user->id;
+
             $this->sendMessageToTelegramChannel(
                 $user->telegram_chat_id,
                 "Добрый день! Собеседник хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)",
                 [
                     [
-                        ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_1"]
+                        ["text" => "Ответить собеседнику!", "callback_data" => "/send_message $tmp_tmu->id"]
                     ]
                 ]
             );
@@ -139,7 +138,7 @@ class GenerateMeetListener
                 "Добрый день! Собеседник хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)",
                 [
                     [
-                        ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_2"]
+                        ["text" => "Ответить собеседнику!", "callback_data" => "/send_message$user->id"]
                     ]
                 ]
             );

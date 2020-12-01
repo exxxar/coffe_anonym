@@ -56,7 +56,7 @@ class CircleConversation extends Conversation
                 return;
             }
 
-            if (!ObsceneCensorRus::isAllowed($title)){
+            if (!ObsceneCensorRus::isAllowed($title)) {
                 $this->bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
                 $this->askTitle();
                 return;
@@ -76,20 +76,14 @@ class CircleConversation extends Conversation
 
             $description = $answer->getText();
 
-            if (str_word_count( iconv("UTF-8", "windows-1251",$description)) < 3) {
-                $this->bot->reply("Слишком короткое описание для такого грандиозного замысла;)");
-                $this->askDescription($title);
-                return;
-            }
-
-            if (mb_strlen($description)>=255){
+            if (mb_strlen($description) >= 255) {
                 $len = mb_strlen($description);
                 $this->bot->reply("Краткость - сестра таланта! Вмести описание в 255 символов, ибо сейчас аж... $len символов");
                 $this->askDescription($title);
                 return;
             }
 
-            if (!ObsceneCensorRus::isAllowed($description)){
+            if (!ObsceneCensorRus::isAllowed($description)) {
                 $this->bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
                 $this->askDescription($title);
                 return;
@@ -115,7 +109,7 @@ class CircleConversation extends Conversation
 
             $user->circles()->attach($circleId);
 
-            Base::mainMenu($this->bot,"Вы успешно создали свой круг по интересам! Теперь вы сможете им поделиться - /my_circles ;)");
+            Base::mainMenu($this->bot, "Вы успешно создали свой круг по интересам! Теперь вы сможете им поделиться - /my_circles ;)");
 
         });
     }

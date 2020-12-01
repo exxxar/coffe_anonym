@@ -19,11 +19,11 @@ use App\Classes\Base;
 use Telegram\Bot\Laravel\Facades\Telegram;
 use Wkhooy\ObsceneCensorRus;
 
-
 $botman = resolve('botman');
 
-
 $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation');
+
+$botman->hears('/send_message ([0-9a-zA-Z-]{36})', BotManController::class . '@sendMessageConversation');
 
 $botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
 
@@ -149,6 +149,7 @@ $botman->hears('/leave_circle ([0-9a-zA-Z-]{36})', function ($bot, $circleId) {
 })->stopsConversation();
 
 $botman->hears('/create|.*Новый круг интересов', BotManController::class . '@startCircleConversation');
+
 $botman->hears('/new_event|.*Добавить событие', BotManController::class . '@startNewEventConversation');
 
 $botman->hears('/i_am_([a-zA-Z]+)', function ($bot, $type) {
@@ -187,6 +188,7 @@ $botman->hears('/restart', function ($bot) {
     ]));
 
 })->stopsConversation();
+
 $botman->hears('/stop', function ($bot) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
@@ -276,7 +278,7 @@ $botman->hears('/ignore ([0-9a-zA-Z-]{36})', function ($bot, $userId) {
     $bot->reply("Данный собеседник не потревожит вас!");
 
 
-});
+})->stopsConversation();
 
 $botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $range) {
     $telegramUser = $bot->getUser();
@@ -445,7 +447,7 @@ _%s_
             "parse_mode" => "Markdown",
 
         ]);
-});
+})->stopsConversation();
 
 $botman->hears('.*Список событий|.*Встречи в рамках событий|/meet_events ([0-9]+)', function ($bot, $page = 0) {
     Base::meetEventsList($bot, $page, Base::isAdmin($bot));
@@ -528,7 +530,6 @@ $botman->hears('/exit_event ([0-9]+)', function ($bot, $eventId) {
 $botman->hears('.*Рассылка всем|/send_to_all', function ($bot) {
     $bot->reply("Массовая рассылка");
 })->stopsConversation();
-
 
 $botman->hears('.*Раздел администратора|/admin', function ($bot) {
     Base::adminMenu($bot, "Добро пожаловать в раздел Администратора");
@@ -617,6 +618,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
     if (isset($bot->getMessage()->getPayload()["sender_chat"]))
         return;
 
+
     $messages = [
         "Спасибо что пишите мне!",
         "Я обязательно вскоре отвечу!",
@@ -695,8 +697,6 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $nearest_user = $nearest->random(1)->first();
 
 
-
-
         $message = "Добрый день! Собеседник хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)";
 
         $nearest_user->last_search = null;
@@ -722,7 +722,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [
                         [
-                            ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_1"]
+                            ["text" => "Ответить собеседнику!", "callback_data" => "/send_message $user->id"]
                         ]
                     ]
                 ])
@@ -737,7 +737,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [
                         [
-                            ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_2"]
+                            ["text" => "Ответить собеседнику!", "callback_data" => "/send_message $nearest_user->id"]
                         ]
                     ]
                 ])

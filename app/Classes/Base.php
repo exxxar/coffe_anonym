@@ -108,7 +108,7 @@ class Base
 
         $user = User::where("telegram_chat_id", $id)->first();
 
-        $circle = Circle::where("id", env("FIRST_CIRCLE_ID"))->first();
+        $circle = Circle::where("id", $circleId)->first();
 
         if (is_null($circle)) {
             $bot->reply("Хм, я почему-то не могу найти этот круг по интересам, но вы можете его создать => /create");
