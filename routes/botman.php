@@ -21,9 +21,12 @@ use Wkhooy\ObsceneCensorRus;
 
 $botman = resolve('botman');
 
-$botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation');
+$botman->hears('/start', function ($bot) {
+    Base::initUser($bot);
+    Base::start($bot);
+})->stopsConversation();
 
-$botman->hears('/send_message ([0-9a-zA-Z-]{36})', BotManController::class . '@sendMessageConversation');
+$botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation');
 
 $botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
 
@@ -39,11 +42,7 @@ $botman->hears('.*Главное меню|.*Передумал создават�
     Base::start($bot, $messages[rand(0, count($messages) - 1)]);
 })->stopsConversation();
 
-
-$botman->hears('/start', function ($bot) {
-    Base::initUser($bot);
-    Base::start($bot);
-})->stopsConversation();
+$botman->hears('/send_message ([0-9a-zA-Z-]{36})', BotManController::class . '@sendMessageConversation');
 
 $botman->hears('.*Круги по интересам', function ($bot) {
     Base::profileMenu($bot, "Ваш личный уголок\xF0\x9F\x8F\xA1\n/crules - *правила кругов интересов*\n/settings - *настройки комфорта* встречь");

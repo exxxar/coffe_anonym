@@ -648,8 +648,8 @@ class Base
 
 Предлагаем Вам выбрать предпочтительного собеседника:
 /prefer_man - предпочтительно мужчины (парни) " . ($user->prefer_meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
-/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
-/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 3 ? "\xE2\x9C\x85" : "") . "
+/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 0 ? "\xE2\x9C\x85" : "") . "
+/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
 
 Также рекомендуем определиться с числом встречь в неделю!
 
