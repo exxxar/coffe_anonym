@@ -19,7 +19,7 @@ class Meet extends Model
         'is_online',
         'is_success',
         "short_comment",
-        "meet_date",
+        "meet_day",
     ];
 
 

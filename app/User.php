@@ -6,6 +6,8 @@ use Carbon\Carbon;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class User extends Authenticatable
 {
@@ -26,15 +28,20 @@ class User extends Authenticatable
         'age',
         'sex',
         'need_meeting',
-        'location',
+        'city',
+        'latitude',
+        'longitude',
+        'last_search',
         'settings',
         'meet_in_week',
         'prefer_meet_in_week',
+        'updated_at',
+        'created_at',
     ];
 
     protected $casts = [
         "location" => "array",
-        'id'=>"string",
+        'id' => "string",
     ];
     /**
      * The attributes that should be hidden for arrays.
@@ -48,9 +55,9 @@ class User extends Authenticatable
     public function circles()
     {
         return $this->belongsToMany(Circle::class, 'user_in_circles', 'user_id', 'circle_id')
-/*            ->withPivot([
-                'inviter_id',
-            ])*/
+            /*            ->withPivot([
+                            'inviter_id',
+                        ])*/
             ->withTimestamps();
     }
 
@@ -72,19 +79,35 @@ class User extends Authenticatable
     }
 
 
-    public static function getNearestUsers($latitude, $longitude, $dist=0.5/*0.5км*/,$update_time=5)
-    {
 
+    public static function getNearestUsers($userId, $latitude, $longitude, $dist = 1000/*0.5км*/, $update_time = 5)
+    {
+        $dist = $dist / 1000;
         $lon1 = $longitude - $dist / abs(cos(rad2deg($latitude)) * 111.0); # 1 градус широты = 111 км
         $lon2 = $longitude + $dist / abs(cos(rad2deg($latitude)) * 111.0);
         $lat1 = $latitude - ($dist / 111.0);
         $lat2 = $latitude + ($dist / 111.0);
 
-        return User::whereBetween('location->latitude', [$lat1, $lat2])
-            ->whereBetween('location->longitude', [$lon1, $lon2])
-            ->where("location->last_seen",">", strtotime(Carbon::now("+3")->subMinute($update_time)))
+        $user_list = User::whereBetween('latitude', [$lat1, $lat2])
+            ->whereBetween('longitude', [$lon1, $lon2])
+            ->where("last_search", ">=", Carbon::now("+3")->subMinute($update_time))
+            ->where("id", "<>", $userId)
             ->get();
 
+        $tmp_users_array_ids = [];
+
+        foreach ($user_list as $user) {
+            $in_ignored = !is_null(IgnoreList::where("ignored_user_id", $user->id)
+                ->orWhere("main_user_id",$user->id)
+                ->first());
+
+            if (!in_array($user->id,$tmp_users_array_ids)&&!$in_ignored)
+                array_push($tmp_users_array_ids,$user->id);
+
+        }
+
+        return User::whereIn('id', $tmp_users_array_ids)
+            ->get();
 
     }
 

@@ -19,7 +19,7 @@ Route::get('/', function () {
 
     dd($data);*/
 
-
+    event(new \App\Events\GenerateMeetEvent());
 
 });
 

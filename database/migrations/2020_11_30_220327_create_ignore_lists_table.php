@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateJobsTable extends Migration
+class CreateIgnoreListsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,10 @@ class CreateJobsTable extends Migration
      */
     public function up()
     {
-        Schema::create('jobs', function (Blueprint $table) {
+        Schema::create('ignore_lists', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('message',1000);
-            $table->json('keyboard');
-            $table->boolean("is_sent")->default(false);
+            $table->uuid('main_user_id')->nullable();
+            $table->uuid('ignored_user_id')->nullable();
             $table->timestamps();
         });
     }
@@ -29,6 +28,6 @@ class CreateJobsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('ignore_lists');
     }
 }

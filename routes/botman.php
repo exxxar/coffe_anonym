@@ -2,7 +2,9 @@
 
 use App\Circle;
 use App\Http\Controllers\BotManController;
+use App\IgnoreList;
 use App\Mail\FeedbackMail;
+use App\Meet;
 use App\MeetEvents;
 use App\User;
 use App\UserInCircle;
@@ -15,6 +17,7 @@ use NumberToWords\NumberToWords;
 
 use App\Classes\Base;
 use Telegram\Bot\Laravel\Facades\Telegram;
+use Wkhooy\ObsceneCensorRus;
 
 
 $botman = resolve('botman');
@@ -211,7 +214,7 @@ $botman->hears('/prefer_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $typ
     $user = User::where("telegram_chat_id", $id)->first();
 
     $counts = ["one" => 1, "two" => 2, "three" => 3];
-    $prefers = ["man" => 1, "woman" => 2, "any" => 3];
+    $prefers = ["man" => 1, "woman" => 0, "any" => 2];
 
     $user->meet_in_week = $counts[$type] ?? $user->meet_in_week;
     $user->prefer_meet_in_week = $prefers[$type] ?? $user->prefer_meet_in_week;
@@ -258,6 +261,22 @@ $botman->hears('/addition_settings', function (\BotMan\BotMan\BotMan $bot) {
     ]);
 
 })->stopsConversation();
+
+$botman->hears('/ignore ([0-9a-zA-Z-]{36})', function ($bot, $userId) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $main_user = User::where("telegram_chat_id", $id)->first();
+    $ignored_user = User::where("id", $userId)->first();
+    \App\IgnoreList::create([
+        'main_user_id' => $main_user->id,
+        'ignored_user_id' => $ignored_user->id
+    ]);
+
+    $bot->reply("Данный собеседник не потревожит вас!");
+
+
+});
 
 $botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $range) {
     $telegramUser = $bot->getUser();
@@ -321,40 +340,6 @@ $botman->hears('/in_time_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $time)
         "on_edit" => Base::prepareAdditionalText($user),
         "on_send" => $message
     ]));
-})->stopsConversation();
-
-$botman->hears('/city_([a-zA-Z]+)', function (\BotMan\BotMan\BotMan $bot, $type) {
-    $telegramUser = $bot->getUser();
-    $id = $telegramUser->getId();
-
-
-    $city_array = ["my" => 0, "all" => 1];
-
-    if (!key_exists($type, $city_array)) {
-        $bot->reply("Упс... мне кажется такого варианта нет");
-        return;
-    }
-    $user = User::where("telegram_chat_id", $id)->first();
-
-    $settings = json_decode(is_null($user->settings) ?
-        json_encode([
-            "range" => 500,
-            "time" => 5,
-            "city" => 0
-        ]) : $user->settings);
-
-
-    $settings->city = $city_array[$type];
-    $user->settings = json_encode($settings);
-    $user->save();
-
-    $message = sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /addition_settings");
-    Base::editOrSend($bot, json_encode([
-        "on_edit" => Base::prepareAdditionalText($user),
-        "on_send" => $message
-    ]));
-
-
 })->stopsConversation();
 
 $botman->hears('/statistic|.*Статистика', function ($bot) {
@@ -472,9 +457,9 @@ $botman->hears('/remove_event ([0-9]+)', function ($bot, $id) {
         return;
     }
 
-    $event = MeetEvents::where("id",$id)->first();
+    $event = MeetEvents::where("id", $id)->first();
 
-    if (is_null($event)){
+    if (is_null($event)) {
         $bot->reply("Хм, событие не найдено!");
         return;
     }
@@ -662,25 +647,38 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
     if (isset($json->location)) {
         $location = $json->location;
 
-        $data = YaGeo::setQuery($location->latitude . ',' . $location->longitude)->load();
+        $data = YaGeo::setQuery($location->longitude . ',' . $location->latitude)->load();
         $city = $data->getResponse()->getLocality();
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
         $user = User::where("telegram_chat_id", $id)->first();
-        $user->location = json_encode([
-            "latitude" => $location->latitude,
-            "longitude" => $location->longitude,
-            "city" => $city ?? null,
-            "last_seen" => new Carbon("+3")
-        ]);
 
-        $nearest = User::getNearestUsers($location->latitude, $location->longitude);
+        $settings = json_decode(is_null($user->settings) ?
+            json_encode([
+                "range" => 500,
+                "time" => 5,
+                "city" => 0
+            ]) : $user->settings);
 
+        $user->latitude = $location->latitude;
+        $user->longitude = $location->longitude;
+        $user->last_search = Carbon::now("+3");
+        $user->city = $city ?? null;
+
+        $user->save();
+
+        $nearest = User::getNearestUsers(
+            $user->id,
+            $location->latitude,
+            $location->longitude,
+            $settings->range,
+            $settings->time
+        );
 
         if (count($nearest) === 0) {
-            $message = "Увы, в данную минуту никого поблизости нет\xF0\x9F\x98\xA2, если в течении <b>5 минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
+            $message = "Увы, в данную минуту никого поблизости (в радиусе <b>$settings->range метров</b>) нет\xF0\x9F\x98\xA2, если в течении <b>$settings->time минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
 
             $bot->sendRequest("sendMessage",
                 [
@@ -690,51 +688,78 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
                     "disable_notification" => true
                 ]);
 
-        } else {
-
-            $nearest_user = $nearest->random(1)->first();
-            $message_1 = "Привет! Я ищу себе собеседника на \xF0\x9F\x98\x8B\nНапиши мне @" . $user->name;
-            $message_2 = "Привет! Я ищу себе собеседника на \xF0\x9F\x98\x8B\nНапиши мне @" . $nearest_user->name;
-
-            $nu_location = json_decode($nearest_user->location);
-            $nu_location->last_seen = null;
-
-            $u_location = json_decode($user->location);
-            $u_location->last_seen = null;
-
-            $nearest_user->location = json_encode($nu_location);
-            $user->location = json_encode($u_location);
-            $nearest_user->save();
-            $user->save();
-
-            $bot->sendRequest("sendMessage",
-                [
-                    "chat_id" => $nearest_user->telegram_chat_id,
-                    "text" => $message_1,
-                    "parse_mode" => "Markdown",
-                ]);
-
-            $bot->sendRequest("stopMessageLiveLocation",
-                [
-                    "chat_id" => $nearest_user->telegram_chat_id,
-                ]);
-
-
-            $bot->sendRequest("sendMessage",
-                [
-                    "chat_id" => $id,
-                    "text" => $message_2,
-                    "parse_mode" => "Markdown",
-                ]);
-
-            $bot->sendRequest("stopMessageLiveLocation",
-                [
-                    "chat_id" => $id,
-                ]);
-
+            return;
 
         }
 
+        $nearest_user = $nearest->random(1)->first();
+
+
+
+
+        $message = "Добрый день! Собеседник хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)";
+
+        $nearest_user->last_search = null;
+        $user->last_search = null;
+        $nearest_user->save();
+        $user->save();
+
+
+        Meet::create([
+            'id' => (string)Str::uuid(),
+            'user1_id' => $user->id,
+            'user2_id' => $nearest_user->id,
+        ]);
+
+        $code_1 = "007" . $user->id;
+        $code_2 = "007" . $nearest_user->id;
+
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => $nearest_user->telegram_chat_id,
+                "text" => $message,
+                "parse_mode" => "Markdown",
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_1"]
+                        ]
+                    ]
+                ])
+            ]);
+
+
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => $user->telegram_chat_id,
+                "text" => $message,
+                "parse_mode" => "Markdown",
+                'reply_markup' => json_encode([
+                    'inline_keyboard' => [
+                        [
+                            ["text" => "Ответить собеседнику!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code_2"]
+                        ]
+                    ]
+                ])
+            ]);
+
+        try {
+            $bot->sendRequest("stopMessageLiveLocation",
+                [
+                    "chat_id" => $nearest_user->telegram_chat_id,
+                ]);
+        } catch (Exception $e) {
+            $bot->reply("error");
+        }
+
+        try {
+            $bot->sendRequest("stopMessageLiveLocation",
+                [
+                    "chat_id" => $id,
+                ]);
+        } catch (Exception $e) {
+            $bot->reply("error");
+        }
 
         $find = true;
     }
@@ -750,6 +775,12 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $noName = is_null($lastName) || is_null($firstName);
 
         $text = $bot->getMessage()->getText();
+
+        if (!ObsceneCensorRus::isAllowed($text)) {
+            $bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
+            return;
+        }
+
         if (mb_strlen($text) > 10)
             Base::sendToAdminChannel($bot, "*Сообщение от* [" .
                 (!$noName ? ($lastName ?? '') . " " . ($firstName ?? '') : $username)

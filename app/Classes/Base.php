@@ -19,6 +19,27 @@ use Telegram\Bot\Laravel\Facades\Telegram;
 
 class Base
 {
+    public static function updateStatus($bot){
+        if (!Base::isValid($bot))
+            return;
+
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $user = User::where("telegram_chat_id",$id)->first();
+
+        if (!is_null($user)){
+            $user->updated_at = Carbon::now("+3");
+            $user->save();
+
+            return;
+        }
+
+        Base::initUser($bot);
+
+
+    }
+
     public static function initUser($bot, $circleId = null)
     {
         if (!Base::isValid($bot))
@@ -191,6 +212,8 @@ class Base
         if (!Base::isValid($bot))
             return;
 
+        Base::updateStatus($bot);
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -235,6 +258,8 @@ class Base
         if (!Base::isValid($bot))
             return;
 
+        Base::updateStatus($bot);
+
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
@@ -248,7 +273,7 @@ class Base
 
         array_push($keyboard, ["\xF0\x9F\x92\xABСтатистика"]);
         array_push($keyboard, ["\xF0\x9F\x93\x8BСписок событий", "\xF0\x9F\x93\x86Добавить событие"]);
-        array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);
+        /*array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);*/
         array_push($keyboard, ["\xF0\x9F\x91\x88Главное меню"]);
 
         $bot->sendRequest("sendMessage",
@@ -270,6 +295,8 @@ class Base
 
         if (!Base::isValid($bot))
             return;
+
+        Base::updateStatus($bot);
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -297,6 +324,8 @@ class Base
     {
         if (!Base::isValid($bot))
             return;
+
+        Base::updateStatus($bot);
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
@@ -604,11 +633,6 @@ class Base
 /in_time_5 - до 5 минут " . ($settings->time == 5 ? "\xE2\x9C\x85" : "") . "
 /in_time_10 - до 10 минут " . ($settings->time == 10 ? "\xE2\x9C\x85" : "") . "
 /in_time_15 - до 15 минут " . ($settings->time == 15 ? "\xE2\x9C\x85" : "") . "
-
-Каких собеседников подбираем?
-
-/city_my - только из моего города " . ($settings->city == 0 ? "\xE2\x9C\x85" : "") . "
-/city_all - со всех городов " . ($settings->city == 1 ? "\xE2\x9C\x85" : "") . "
 
 /settings - все оставшиеся настройки
     ";

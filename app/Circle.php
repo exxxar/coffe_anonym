@@ -29,7 +29,7 @@ class Circle extends Model
     }
 
     public function users(){
-       return $this->belongsToMany(User::class, 'user_in_circles', 'user_id', 'circle_id')
+       return $this->belongsToMany(User::class, 'user_in_circles', 'circle_id', 'user_id')
             ->withTimestamps();
     }
 

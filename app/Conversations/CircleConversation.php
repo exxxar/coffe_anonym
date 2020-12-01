@@ -10,6 +10,7 @@ use BotMan\BotMan\Messages\Conversations\Conversation;
 use BotMan\BotMan\Messages\Incoming\Answer;
 use BotMan\BotMan\Messages\Outgoing\Question;
 use Illuminate\Support\Str;
+use Wkhooy\ObsceneCensorRus;
 
 class CircleConversation extends Conversation
 {
@@ -55,6 +56,12 @@ class CircleConversation extends Conversation
                 return;
             }
 
+            if (!ObsceneCensorRus::isAllowed($title)){
+                $this->bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
+                $this->askTitle();
+                return;
+            }
+
             $this->askDescription($title);
 
         });
@@ -78,6 +85,12 @@ class CircleConversation extends Conversation
             if (mb_strlen($description)>=255){
                 $len = mb_strlen($description);
                 $this->bot->reply("Краткость - сестра таланта! Вмести описание в 255 символов, ибо сейчас аж... $len символов");
+                $this->askDescription($title);
+                return;
+            }
+
+            if (!ObsceneCensorRus::isAllowed($description)){
+                $this->bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
                 $this->askDescription($title);
                 return;
             }
