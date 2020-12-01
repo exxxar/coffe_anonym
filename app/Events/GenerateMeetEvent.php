@@ -14,14 +14,16 @@ class GenerateMeetEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public $current_week_iteration;
+
     /**
      * Create a new event instance.
      *
-     * @return void
+     * @param int $current_week_iteration
      */
-    public function __construct()
+    public function __construct($current_week_iteration = 1)
     {
-        //
+        $this->$current_week_iteration = $current_week_iteration;
     }
 
     /**

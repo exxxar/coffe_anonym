@@ -54,7 +54,7 @@ class Base
 
         $is_first = false;
         $user = User::where("telegram_chat_id", $id)->first();
-        if ($user == null) {
+        if (is_null($user)) {
             $userId = (string)Str::uuid();
             User::create([
                 'id' => $userId,
