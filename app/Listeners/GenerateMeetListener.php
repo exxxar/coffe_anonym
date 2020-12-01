@@ -42,7 +42,7 @@ class GenerateMeetListener
 
         $users = User::with(["circles", "circles.users"])
             ->where('need_meeting', true)
-            ->where("meet_in_week", $event->current_week_iteration)
+            ->where("meet_in_week", ">=",$event->current_week_iteration)
             ->where("updated_at", "<=", Carbon::now()->subDays(30)->toDateTimeString())
             ->get();
 
