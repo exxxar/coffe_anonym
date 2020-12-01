@@ -15,11 +15,15 @@ class Meet extends Model
         'user2_id',
         'event_id',
 
-        'rating',
+        'rating_1',
+        'rating_2',
         'is_online',
         'is_success',
-        "short_comment",
+        "short_comment_1",
+        "short_comment_2",
         "meet_day",
+        "updated_at",
+        "created_at",
     ];
 
 
@@ -35,7 +39,7 @@ class Meet extends Model
 
     public function event()
     {
-        return $this->hasOne(Event::class, 'id', 'event_id');
+        return $this->hasOne(MeetEvents::class, 'id', 'event_id');
     }
 
 }

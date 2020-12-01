@@ -26,7 +26,93 @@ $botman->hears('/start', function ($bot) {
     Base::start($bot);
 })->stopsConversation();
 
-$botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation');
+$botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation')->stopsConversation();
+
+$botman->hears('/meet_poll_rating_([0-9]{1}) ([0-9a-zA-Z-]{39}) ([0-9]{1})', function ($bot, $index, $meetId, $ratingIndex) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $meet = Meet::where("id", $meetId)->first();
+
+    if (is_null($meet)) {
+        $bot->replay("Хм, не найдена встреча...");
+        return;
+    }
+
+    if ($index == 1)
+        $meet->rating_1 = $ratingIndex;
+    else
+        $meet->rating_2 = $ratingIndex;
+    $meet->save();
+
+    $keyboard = [
+        [
+            ["text" => "Понедельник" . ($meet->meet_day == 1 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 1"],
+            ["text" => "Вторник" . ($meet->meet_day == 2 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 2"],
+            ["text" => "Среда" . ($meet->meet_day == 3 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 3"],
+        ],
+        [
+            ["text" => "Четверг" . ($meet->meet_day == 4 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 4"],
+            ["text" => "Пятница" . ($meet->meet_day == 5 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 5"],
+            ["text" => "Суббота" . ($meet->meet_day == 6 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 6"],
+        ],
+        [
+            ["text" => "Воскресенье" . ($meet->meet_day == 7 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 7"],
+        ]
+
+    ];
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => "В какой день прошла ваша последняя встреча?",
+            "parse_mode" => "Markdown",
+            'reply_markup' => json_encode([
+                'inline_keyboard' =>
+                    $keyboard
+            ])
+        ]);
+
+})->stopsConversation();
+
+$botman->hears('/meet_poll_day_([0-9]{1}) ([0-9a-zA-Z-]{39}) ([0-9]{1})', function ($bot, $index, $meetId, $dayIndex) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $meet = Meet::where("id", $meetId)->first();
+
+    if (is_null($meet)) {
+        $bot->replay("Хм, не найдена встреча...");
+        return;
+    }
+
+    if ($index == 1)
+        $meet->meet_day = $dayIndex;
+    else
+        $meet->meet_day = $dayIndex;
+    $meet->save();
+
+    $keyboard = [
+        [
+            ["text" => "Оставить отзыв" , "callback_data" => "/meet_poll_comment_$index $meetId"],
+
+        ]
+    ];
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => "Оставьте свой отзыв о данной встрече!",
+            "parse_mode" => "Markdown",
+            'reply_markup' => json_encode([
+                'inline_keyboard' =>
+                    $keyboard
+            ])
+        ]);
+
+})->stopsConversation();
+
+$botman->hears('/meet_poll_comment_([0-9]{1}) ([0-9a-zA-Z-]{39})', BotManController::class . '@meetPollConversation')->stopsConversation();
 
 $botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
 

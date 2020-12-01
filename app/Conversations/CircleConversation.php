@@ -56,6 +56,13 @@ class CircleConversation extends Conversation
                 return;
             }
 
+            if (mb_strlen($title) >= 255) {
+                $len = mb_strlen($title);
+                $this->bot->reply("Краткость - сестра таланта! Вместите описание в 255 символов. Сейчас $len");
+                $this->askTitle();
+                return;
+            }
+
             if (!ObsceneCensorRus::isAllowed($title)) {
                 $this->bot->reply("Подобная лексика не может быть использована в культурном сообществе! Подберите другие слова!");
                 $this->askTitle();
@@ -69,7 +76,7 @@ class CircleConversation extends Conversation
 
     public function askDescription($title)
     {
-        $question = Question::create("\xF0\x9F\x91\x89Опишие основую идею круга (не меньше 3 слов \xE2\x9C\x85):")
+        $question = Question::create("\xF0\x9F\x91\x89Опишите основую идею круга (не меньше 3 слов \xE2\x9C\x85):")
             ->fallback('Спасибо что пообщались со мной:)!');
 
         $this->ask($question, function (Answer $answer) use ($title) {
@@ -78,7 +85,7 @@ class CircleConversation extends Conversation
 
             if (mb_strlen($description) >= 255) {
                 $len = mb_strlen($description);
-                $this->bot->reply("Краткость - сестра таланта! Вмести описание в 255 символов, ибо сейчас аж... $len символов");
+                $this->bot->reply("Краткость - сестра таланта! Вместите описание в 255 символов, ибо сейчас аж... $len символов");
                 $this->askDescription($title);
                 return;
             }

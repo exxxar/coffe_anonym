@@ -11,7 +11,7 @@
 |
 */
 
-Route::get('/', function () {
+Route::get('/req', function () {
 
     /*$data = YaGeo::setQuery('53.082592, 56.424311')->load();
 
@@ -19,7 +19,8 @@ Route::get('/', function () {
 
     dd($data);*/
 
-    event(new \App\Events\GenerateMeetEvent());
+    //event(new \App\Events\GenerateMeetEvent());
+    event(new \App\Events\RequestMeetEvent());
 
 });
 

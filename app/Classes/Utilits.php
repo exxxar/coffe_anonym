@@ -4,6 +4,8 @@
 namespace App\Classes;
 
 
+use Telegram\Bot\Laravel\Facades\Telegram;
+
 trait Utilits
 {
     protected function sendMessageToTelegramChannel($id, $message, $keyboard = [])

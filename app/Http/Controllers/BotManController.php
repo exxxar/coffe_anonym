@@ -53,6 +53,12 @@ class BotManController extends Controller
         $bot->startConversation(new RequestConversation($bot,$userId));
     }
 
+    public function meetPollConversation(BotMan $bot,$index,$meetId)
+    {
+        $bot->startConversation(new MeetPollConversation($bot,$index,$meetId));
+    }
+
+
 
 
 

@@ -2,6 +2,7 @@
 
 namespace App\Conversations;
 
+use App\Classes\Utilits;
 use App\Mail\FeedbackMail;
 use App\User;
 use BotMan\BotMan\BotMan;
@@ -15,6 +16,8 @@ use Wkhooy\ObsceneCensorRus;
 
 class RequestConversation extends Conversation
 {
+
+    use Utilits;
 
     protected $bot;
     protected $current_user_id;
