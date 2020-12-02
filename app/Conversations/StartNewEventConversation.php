@@ -113,13 +113,8 @@ class StartNewEventConversation extends Conversation
             $title = mb_strtolower($title);
             $description = mb_strtolower($description);
 
-            $circleId = (string)Str::uuid();
-
-
-            Log::info($this->bot->userStorage()->get('image_url') ?? 'test');
 
             MeetEvents::create([
-                'id' => $circleId,
                 'title' => Str::ucfirst($title),
                 'description' => Str::ucfirst($description),
                 'date_start' => Carbon::now("+3")->addDay(1),

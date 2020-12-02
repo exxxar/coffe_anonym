@@ -27,7 +27,10 @@ class Meet extends Model
     ];
 
     protected $casts = [
-      "id"=>"string"
+      "id"=>"string",
+      "user1_id"=>"string",
+      "user2_id"=>"string",
+      "event_id"=>"string"
     ];
 
 

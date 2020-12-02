@@ -19,16 +19,17 @@ use Telegram\Bot\Laravel\Facades\Telegram;
 
 class Base
 {
-    public static function updateStatus($bot){
+    public static function updateStatus($bot)
+    {
         if (!Base::isValid($bot))
             return;
 
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
-        $user = User::where("telegram_chat_id",$id)->first();
+        $user = User::where("telegram_chat_id", $id)->first();
 
-        if (!is_null($user)){
+        if (!is_null($user)) {
             $user->updated_at = Carbon::now("+3");
             $user->save();
 
@@ -120,7 +121,7 @@ class Base
                 ->first() != null;
 
         if ($userInCircle) {
-            $bot->reply("Вы и так в этом кругу, но вы всегда можете создать что-то своё => /create");
+            $bot->reply("Вы уже участник данного сообщества!)");
             return;
         }
 
@@ -217,6 +218,14 @@ class Base
         $telegramUser = $bot->getUser();
         $id = $telegramUser->getId();
 
+        $user = User::where("telegram_chat_id", $id)->first();
+
+        $settings = json_decode(is_null($user->settings) ?
+            json_encode([
+                "range" => 500,
+                "time" => 30,
+                "city" => 0
+            ]) : $user->settings);
 
         $keyboard = [];
 
@@ -227,13 +236,15 @@ class Base
         if (count($events) > 0)
             array_push($keyboard, ["\xE2\xAD\x90Встречи в рамках событий"]);
 
-        if (User::all()->count() > 1000)
-            array_push($keyboard, [
-                ["text" => "\xF0\x9F\x93\x8DМоментальная встреча",
-                    "request_location" => true]
-            ]);
 
-        //array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
+        array_push($keyboard, [
+            ["text" => ($settings->city == 1 ?
+                "\xF0\x9F\x8C\x90Найти собеседника в городе" :
+                "\xF0\x9F\x93\x8DНайти собеседника в радиусе"
+            ),
+                "request_location" => true]
+        ]);
+
         array_push($keyboard, ["\xE2\x98\x9DКак пользоваться?"]);
 
         if (Base::isAdmin($bot))
@@ -273,6 +284,7 @@ class Base
 
         array_push($keyboard, ["\xF0\x9F\x92\xABСтатистика"]);
         array_push($keyboard, ["\xF0\x9F\x93\x8BСписок событий", "\xF0\x9F\x93\x86Добавить событие"]);
+        array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам", "\xF0\x9F\x8E\x88Новый круг интересов"]);
         /*array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);*/
         array_push($keyboard, ["\xF0\x9F\x91\x88Главное меню"]);
 
@@ -333,27 +345,13 @@ class Base
 
         Base::myInterestCircles($bot);
 
-        $keyboard = [
-            // ["\xF0\x9F\x92\xABМои круги интересов"],
-            ["\xF0\x9F\x8E\x88Новый круг интересов"],
-            /*[
-                ["text" => "\xF0\x9F\x93\x8DОтправить свой город",
-                    "request_location" => true]
-            ],*/
-            ["	\xF0\x9F\x91\x88Главное меню"],
-        ];
-
 
         $bot->sendRequest("sendMessage",
             [
                 "chat_id" => "$id",
                 "text" => $message,
                 "parse_mode" => "Markdown",
-                'reply_markup' => json_encode([
-                    'keyboard' => $keyboard,
-                    'one_time_keyboard' => false,
-                    'resize_keyboard' => true
-                ])
+
             ]);
 
     }
@@ -423,6 +421,11 @@ class Base
                 ],
             ];
 
+            if (Base::isAdmin($bot)) {
+                array_push($keyboard, [
+                    ["text" => "\xE2\x9D\x8EСписок пользователей", "callback_data" => "/user_list " . $circle->id . " 0"],
+                ]);
+            }
             $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
 
             $numberToWords = new NumberToWords();
@@ -591,15 +594,12 @@ class Base
             return;
 
         $message = is_null($message) ? sprintf("
-    Привет!
-Это Кофе с Анонимом!\xE2\x98\x95
+Привет! Кофе с участником *Club500* !\xE2\x98\x95 Уникальный проект наугад соединяет участников клуба. 
+Включи нетворкинг на максимум! *Ты уже в деле!* 
+Всё остальное можно узнать из правил\xF0\x9F\x98\x89
 
-Уникальный проект, который соединяет двух участников сообщества, которые не против расширить свой кругозор и пообщаться с новым человеком на предстоящей неделе.
-
-Вы уже в деле! А всё остальное можно узнать походу дела или из правил\xF0\x9F\x98\x89 
-
-Наши правила вы сможете прочитать тут /rules
-А сделать встречи более комфортными можно тут /settings
+/rules - правила
+/settings - настойки комфорта встреч
 ") : $message;
 
         Base::mainMenu($bot, $message);
@@ -628,11 +628,16 @@ class Base
 /in_range_2000 - до 2х км " . ($settings->range == 2000 ? "\xE2\x9C\x85" : "") . "
 /in_range_3000 - до 3х км " . ($settings->range == 3000 ? "\xE2\x9C\x85" : "") . "
 
+/from_city - собеседник из вашего города " . ($settings->city == 1 ? "\xE2\x9C\x85" : "") . "
+/from_any - собеседник из любого города " . ($settings->city == 0 ? "\xE2\x9C\x85" : "") . "
+
 Настравиваем время ожидания подбора собеседника
 
-/in_time_5 - до 5 минут " . ($settings->time == 5 ? "\xE2\x9C\x85" : "") . "
-/in_time_10 - до 10 минут " . ($settings->time == 10 ? "\xE2\x9C\x85" : "") . "
-/in_time_15 - до 15 минут " . ($settings->time == 15 ? "\xE2\x9C\x85" : "") . "
+/in_time_30 - в течении 30 минут " . ($settings->time == 30 ? "\xE2\x9C\x85" : "") . "
+/in_time_60 - в течении 1 часа " . ($settings->time == 60 ? "\xE2\x9C\x85" : "") . "
+/in_time_90 - в течении 1 часа 30 минут " . ($settings->time == 90 ? "\xE2\x9C\x85" : "") . "
+/in_time_120 - в течении 2х часов" . ($settings->time == 120 ? "\xE2\x9C\x85" : "") . "
+/in_time_240 - в течении 4х часов " . ($settings->time == 240 ? "\xE2\x9C\x85" : "") . "
 
 /settings - все оставшиеся настройки
     ";
@@ -646,12 +651,7 @@ class Base
         $message = "
 Мы не сводим половинки, но мы помогаем Вам провести время в компании интересного собеседника!
 
-Предлагаем Вам выбрать предпочтительного собеседника:
-/prefer_man - предпочтительно мужчины (парни) " . ($user->prefer_meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
-/prefer_woman - предпочтительно женщины (девушки) " . ($user->prefer_meet_in_week == 0 ? "\xE2\x9C\x85" : "") . "
-/prefer_any - любой собеседник " . ($user->prefer_meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
-
-Также рекомендуем определиться с числом встречь в неделю!
+И рекомендуем определиться с числом встречь в неделю!
 
 /prefer_one - максимум одна встреча в неделю " . ($user->meet_in_week == 1 ? "\xE2\x9C\x85" : "") . "
 /prefer_two - одна или две встречи в неделю " . ($user->meet_in_week == 2 ? "\xE2\x9C\x85" : "") . "
@@ -663,10 +663,6 @@ class Base
                 "/restart - появилось желание с кем-либо встретиться!" :
                 "/stop - больше нет желания с кем-либо встречаться (в течении недели)"
             ) . "
-
-Если вдруг вы ошибочного выбрали свой собственный пол, то его тоже легко можно поменять:
-/i_am_man - собседники будут воспринимать вас как мужчину (парня) " . ($user->sex == 1 ? "\xE2\x9C\x85" : "") . "
-/i_am_woman - собседники будут воспринимать вас как женщину (девушку) " . ($user->sex == 0 ? "\xE2\x9C\x85" : "") . "
 
 /addition_settings - дополнительные настройки
     ";

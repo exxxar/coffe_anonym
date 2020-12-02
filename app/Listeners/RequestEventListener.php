@@ -62,7 +62,7 @@ class RequestEventListener
 
         foreach ($meets as $meet) {
 
-            Log::info("MEEET=".print_r($meet,true));
+            Log::info("MEEET=".$meet->id);
             $user1 = User::where("id", $meet->user1_id)->first();
             $user2 = User::where("id", $meet->user2_id)->first();
 

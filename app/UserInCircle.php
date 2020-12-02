@@ -13,6 +13,11 @@ class UserInCircle extends Model
       'circle_id'
     ];
 
+    protected $casts = [
+        'user_id'=>"string",
+        'circle_id'=>"string",
+    ];
+
     public function circle(){
         return $this->hasOne(Circle::class, 'id', 'circle_id');
     }

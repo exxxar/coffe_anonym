@@ -12,4 +12,9 @@ class IgnoreList extends Model
         'main_user_id',
         'ignored_user_id'
     ];
+
+    protected $casts = [
+        'main_user_id'=>"string",
+        'ignored_user_id'=>"string",
+    ];
 }

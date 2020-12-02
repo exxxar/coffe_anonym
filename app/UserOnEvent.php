@@ -12,4 +12,8 @@ class UserOnEvent extends Model
         'user_id',
         'event_id'
     ];
+
+    protected $casts = [
+        'user_id'=>"string",
+    ];
 }
