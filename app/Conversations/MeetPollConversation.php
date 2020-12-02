@@ -22,12 +22,13 @@ class MeetPollConversation extends Conversation
     protected $meetId;
 
 
-    public function __construct(BotMan $bot, $index, $meetId)
+    public function __construct(BotMan $bot, $data)
     {
         $this->bot = $bot;
 
-        $this->index = $index;
-        $this->meetId = $meetId;
+        $this->index = substr($data, 0, 1);
+        $this->meetId  = substr($data, 1, 36);
+
 
         $telegramUser = $bot->getUser();
         $this->current_user_id = $telegramUser->getId();

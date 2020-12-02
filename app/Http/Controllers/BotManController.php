@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Conversations\CalcConversation;
 use App\Conversations\CircleConversation;
+use App\Conversations\MeetPollConversation;
 use App\Conversations\MessagesConversation;
 use App\Conversations\RequestConversation;
 use App\Conversations\StartNewEventConversation;
@@ -53,9 +54,9 @@ class BotManController extends Controller
         $bot->startConversation(new RequestConversation($bot,$userId));
     }
 
-    public function meetPollConversation(BotMan $bot,$index,$meetId)
+    public function meetPollConversation(BotMan $bot,$data)
     {
-        $bot->startConversation(new MeetPollConversation($bot,$index,$meetId));
+        $bot->startConversation(new MeetPollConversation($bot,$data));
     }
 
 

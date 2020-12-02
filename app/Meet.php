@@ -26,6 +26,10 @@ class Meet extends Model
         "created_at",
     ];
 
+    protected $casts = [
+      "id"=>"string"
+    ];
+
 
     public function user1()
     {

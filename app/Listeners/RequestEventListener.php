@@ -8,6 +8,7 @@ use App\User;
 use Carbon\Carbon;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Log;
 
 class RequestEventListener
 {
@@ -26,13 +27,14 @@ class RequestEventListener
 
     protected function prepareKeyboard($index, $meetId)
     {
+        Log::info($index." ".$meetId);
         return [
             [
-                ["text" => "1\xE2\x98\x95", "callback_data" => "/meet_poll_rating_$index $meetId 1"],
-                ["text" => "2\xE2\x98\x95", "callback_data" => "/meet_poll_rating_$index $meetId 2"],
-                ["text" => "3\xE2\x98\x95", "callback_data" => "/meet_poll_rating_$index $meetId 3"],
-                ["text" => "4\xE2\x98\x95", "callback_data" => "/meet_poll_rating_$index $meetId 4"],
-                ["text" => "5\xE2\x98\x95", "callback_data" => "/meet_poll_rating_$index $meetId 5"],
+                ["text" => "1\xE2\x98\x95", "callback_data" => "/meet_poll_rating ".$index.$meetId."1"],
+                ["text" => "2\xE2\x98\x95", "callback_data" => "/meet_poll_rating ".$index.$meetId."2"],
+                ["text" => "3\xE2\x98\x95", "callback_data" => "/meet_poll_rating ".$index.$meetId."3"],
+                ["text" => "4\xE2\x98\x95", "callback_data" => "/meet_poll_rating ".$index.$meetId."4"],
+                ["text" => "5\xE2\x98\x95", "callback_data" => "/meet_poll_rating ".$index.$meetId."5"],
             ],
 
 
@@ -59,10 +61,12 @@ class RequestEventListener
             ->get();
 
         foreach ($meets as $meet) {
+
+            Log::info("MEEET=".print_r($meet,true));
             $user1 = User::where("id", $meet->user1_id)->first();
             $user2 = User::where("id", $meet->user2_id)->first();
 
-
+/*
             if (!in_array($user1->id, $test_users)) {
                 array_push($test_users, $user1->id);
                 $this->sendMessageToTelegramChannel(
@@ -81,7 +85,7 @@ class RequestEventListener
                     "Добрый день! Недавно вы провели встречу, оцените результат этой встречи:) *Во сколько баллов вы бы оценили встречу?*",
                     $this->prepareKeyboard(2, $meet->id)
                 );
-            }
+            }*/
         }
     }
 }

@@ -28,9 +28,13 @@ $botman->hears('/start', function ($bot) {
 
 $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation')->stopsConversation();
 
-/*$botman->hears('/meet_poll_rating ([0-9a-zA-Z-]{36})', function ($bot, $meetId) {
+$botman->hears('/meet_poll_rating ([0-9a-zA-Z-]{38})', function ($bot, $data) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
+
+    $index = substr($data, 0, 1);
+    $meetId = substr($data, 1, 36);
+    $ratingIndex = substr($data, 37, 1);
 
     $meet = Meet::where("id", $meetId)->first();
 
@@ -47,17 +51,17 @@ $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWit
 
     $keyboard = [
         [
-            ["text" => "Понедельник" . ($meet->meet_day == 1 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 1"],
-            ["text" => "Вторник" . ($meet->meet_day == 2 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 2"],
-            ["text" => "Среда" . ($meet->meet_day == 3 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 3"],
+            ["text" => "Понедельник" . ($meet->meet_day == 1 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "1"],
+            ["text" => "Вторник" . ($meet->meet_day == 2 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "2"],
+            ["text" => "Среда" . ($meet->meet_day == 3 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "3"],
         ],
         [
-            ["text" => "Четверг" . ($meet->meet_day == 4 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 4"],
-            ["text" => "Пятница" . ($meet->meet_day == 5 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 5"],
-            ["text" => "Суббота" . ($meet->meet_day == 6 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 6"],
+            ["text" => "Четверг" . ($meet->meet_day == 4 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "4"],
+            ["text" => "Пятница" . ($meet->meet_day == 5 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "5"],
+            ["text" => "Суббота" . ($meet->meet_day == 6 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "6"],
         ],
         [
-            ["text" => "Воскресенье" . ($meet->meet_day == 7 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day_$index $meetId 7"],
+            ["text" => "Воскресенье" . ($meet->meet_day == 7 ? "\xE2\x9C\x85" : ""), "callback_data" => "/meet_poll_day " . $index . $meetId . "7"],
         ]
 
     ];
@@ -75,9 +79,13 @@ $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWit
 
 })->stopsConversation();
 
-$botman->hears('/meet_poll_day_([0-9]{1}) ([0-9a-zA-Z-]{36}) ([0-9]{1})', function ($bot, $index, $meetId, $dayIndex) {
+$botman->hears('/meet_poll_day ([0-9a-zA-Z-]{38})', function ($bot, $data) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
+
+    $index = substr($data, 0, 1);
+    $meetId = substr($data, 1, 36);
+    $dayIndex = substr($data, 37, 1);
 
     $meet = Meet::where("id", $meetId)->first();
 
@@ -94,8 +102,7 @@ $botman->hears('/meet_poll_day_([0-9]{1}) ([0-9a-zA-Z-]{36}) ([0-9]{1})', functi
 
     $keyboard = [
         [
-            ["text" => "Оставить отзыв" , "callback_data" => "/meet_poll_comment_$index $meetId"],
-
+            ["text" => "Оставить отзыв", "callback_data" => "/meet_poll_comment " . $index . $meetId],
         ]
     ];
 
@@ -112,7 +119,7 @@ $botman->hears('/meet_poll_day_([0-9]{1}) ([0-9a-zA-Z-]{36}) ([0-9]{1})', functi
 
 })->stopsConversation();
 
-$botman->hears('/meet_poll_comment_([0-9]+) ([0-9a-zA-Z-]{36})', BotManController::class . '@meetPollConversation')->stopsConversation();*/
+$botman->hears('/meet_poll_comment ([0-9a-zA-Z-]{37})', BotManController::class . '@meetPollConversation')->stopsConversation();
 
 $botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
 
@@ -713,7 +720,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
 
     Base::initUser($bot);
 
-    $json = json_decode($bot->getMessage()->getPayload());
+    $json = json_decode($bot->getMessage()->getPayload()??'');
 
 
     $find = false;
