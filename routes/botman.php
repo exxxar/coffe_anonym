@@ -28,7 +28,7 @@ $botman->hears('/start', function ($bot) {
 
 $botman->hears('/start ([0-9a-zA-Z-]{39})', BotManController::class . '@startWithDataConversation')->stopsConversation();
 
-$botman->hears('/meet_poll_rating ([0-9a-zA-Z-]{36})', function ($bot, $meetId) {
+/*$botman->hears('/meet_poll_rating ([0-9a-zA-Z-]{36})', function ($bot, $meetId) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
 
@@ -112,7 +112,7 @@ $botman->hears('/meet_poll_day_([0-9]{1}) ([0-9a-zA-Z-]{36}) ([0-9]{1})', functi
 
 })->stopsConversation();
 
-$botman->hears('/meet_poll_comment_([0-9]+) ([0-9a-zA-Z-]{36})', BotManController::class . '@meetPollConversation')->stopsConversation();
+$botman->hears('/meet_poll_comment_([0-9]+) ([0-9a-zA-Z-]{36})', BotManController::class . '@meetPollConversation')->stopsConversation();*/
 
 $botman->hears('.*Главное меню|.*Передумал создавать', function ($bot) {
 
