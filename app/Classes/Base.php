@@ -233,7 +233,7 @@ class Base
                     "request_location" => true]
             ]);
 
-        array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
+        //array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам"]);
         array_push($keyboard, ["\xE2\x98\x9DКак пользоваться?"]);
 
         if (Base::isAdmin($bot))
