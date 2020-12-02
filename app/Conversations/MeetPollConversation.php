@@ -81,6 +81,8 @@ class MeetPollConversation extends Conversation
 
             $meet->save();
 
+            $this->bot->userStorage()->delete();
+
             Base::mainMenu($this->bot, "Спасибо за отзывы!)");
 
         });
