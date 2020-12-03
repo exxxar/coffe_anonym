@@ -59,7 +59,7 @@ class Base
             $userId = (string)Str::uuid();
             User::create([
                 'id' => $userId,
-                'name' => $username ?? $userId,
+                'name' => $username ?? null,
                 'email' => "$id@t.me",
                 'password' => bcrypt($id),
                 'fio_from_telegram' => "$firstName $lastName",
@@ -283,6 +283,7 @@ class Base
         $keyboard = [];
 
         array_push($keyboard, ["\xF0\x9F\x92\xABСтатистика"]);
+        array_push($keyboard, ["\xF0\x9F\x93\x8BНайти и удалить пользователя"]);
         array_push($keyboard, ["\xF0\x9F\x93\x8BСписок событий", "\xF0\x9F\x93\x86Добавить событие"]);
         array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам", "\xF0\x9F\x8E\x88Новый круг интересов"]);
         /*array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);*/
@@ -604,7 +605,7 @@ class Base
 
         Base::mainMenu($bot, $message);
 
-        Base::checkSex($bot);
+      //  Base::checkSex($bot);
     }
 
 

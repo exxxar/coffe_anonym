@@ -2,8 +2,6 @@
 
 use App\Circle;
 use App\Http\Controllers\BotManController;
-use App\IgnoreList;
-use App\Mail\FeedbackMail;
 use App\Meet;
 use App\MeetEvents;
 use App\User;
@@ -11,7 +9,6 @@ use App\UserInCircle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use NumberToWords\NumberToWords;
 
@@ -188,7 +185,7 @@ $botman->hears('.*Как пользоваться?|/rules', function ($bot) {
             "parse_mode" => "HTML",
         ]);
 
-    Base::checkSex($bot);
+    //Base::checkSex($bot);
 
 })->stopsConversation();
 
@@ -464,7 +461,6 @@ $botman->hears('/from_(city|any)', function (\BotMan\BotMan\BotMan $bot, $from) 
     ]));
 })->stopsConversation();
 
-
 $botman->hears('/statistic|.*Статистика', function ($bot) {
     if (!Base::isAdmin($bot)) {
         $bot->reply("Раздел недоступен");
@@ -633,7 +629,7 @@ $botman->hears('/exit_event ([0-9]+)', function ($bot, $eventId) {
     }
 
     $user = User::with(["events"])->where("telegram_chat_id", $id)->first();
-    Log::info("Test 1");
+
     $on_event = \App\UserOnEvent::where("user_id", $user->id)
             ->where("event_id", $event->id)
             ->first() != null;
@@ -642,7 +638,7 @@ $botman->hears('/exit_event ([0-9]+)', function ($bot, $eventId) {
         $bot->reply("Хм, вы и так не участвуете в событии!");
         return;
     }
-    Log::info("Test 2");
+
     $user->events()->detach([$eventId]);
     $bot->reply("Жаль, конечно, но это ваш выбор!)");
 
@@ -655,6 +651,56 @@ $botman->hears('.*Рассылка всем|/send_to_all', function ($bot) {
 $botman->hears('.*Раздел администратора|/admin', function ($bot) {
     Base::adminMenu($bot, "Добро пожаловать в раздел Администратора");
 })->stopsConversation();
+
+$botman->hears('/meet_with_random', function ($bot) {
+    $bot->reply("test");
+})->stopsConversation();
+
+$botman->hears('/any_users', function ($bot) {
+    $telegramUser = $bot->getUser();
+    $id = $telegramUser->getId();
+
+    $user = User::where("telegram_chat_id", $id)->first();
+
+    $fare = User::getNearestUsers(
+        $user->id,
+        $user->latitude,
+        $user->longitude,
+        50000,
+        7200//$settings->time
+    );
+
+    $prepared = User::prepareUsersWithDist($user->id, $fare);
+    $tmp_text = "";
+    foreach ($prepared as $index => $item) {
+
+        $tmp_text .= sprintf("<b>%s</b> (~%s м., в сети %s часов назад)\n",
+            ($item["user"]->fio_from_telegram ?? $item["user"]->name ?? $item["user"]->id),
+            $item["dist"],
+            $item["last_seen"]
+
+        );
+    }
+
+    $keyboard =
+        [
+            [
+                ["text" => "Пригласить из этого списка", "callback_data" => "/meet_with_random"]
+            ]
+        ];
+
+    $bot->sendRequest("sendMessage",
+        [
+            "chat_id" => "$id",
+            "text" => $tmp_text,
+            "parse_mode" => "HTML",
+            "disable_notification" => true,
+            'reply_markup' => json_encode([
+                'inline_keyboard' => $keyboard
+            ])
+        ]);
+
+});
 
 $botman->receivesImages(function (\BotMan\BotMan\BotMan $bot, $images) {
 
@@ -788,6 +834,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $user->latitude = $location->latitude;
         $user->longitude = $location->longitude;
         $user->last_search = Carbon::now("+3");
+        $user->updated_at = Carbon::now("+3");
         $user->city = $city ?? null;
 
         $user->save();
@@ -800,15 +847,38 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
             $settings->time
         );
 
+        $fare = User::getNearestUsers(
+            $user->id,
+            $location->latitude,
+            $location->longitude,
+            50000,
+            50000//$settings->time
+        );
+
+        $prepared = User::prepareUsersWithDist($user->id, $fare);
+
+
         if (count($nearest) === 0) {
             $message = "Увы, в данную минуту никого поблизости (в радиусе <b>$settings->range метров</b>) нет\xF0\x9F\x98\xA2, если в течении <b>$settings->time минут</b> кто-то объявится, мы дадим вам знать;)\n\n/addition_settings - настройка подбора";
+
+            $keyboard = [];
+
+            if (count($prepared) > 0)
+                array_push($keyboard,
+                    [
+                        ["text" => "Посмотреть остальных", "callback_data" => "/any_users"]
+                    ]
+                );
 
             $bot->sendRequest("sendMessage",
                 [
                     "chat_id" => "$id",
                     "text" => $message,
                     "parse_mode" => "HTML",
-                    "disable_notification" => true
+                    "disable_notification" => true,
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' => $keyboard
+                    ])
                 ]);
 
             return;
