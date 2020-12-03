@@ -2,9 +2,11 @@
 
 namespace App\Conversations;
 
+use App\Circle;
 use App\Classes\Base;
 use App\IgnoreList;
 use App\User;
+use App\UserInCircle;
 use BotMan\BotMan\BotMan;
 use BotMan\BotMan\Messages\Conversations\Conversation;
 
@@ -72,6 +74,40 @@ class StartWithDataConversation extends Conversation
                     return;
                 }
 
+                break;
+            case "009":
+                $flag = true;
+                if (!$admin->is_admin) {
+                    $this->bot->reply("Вам не доступна данная операция:(");
+                    return;
+                }
+
+                $arg3 = $this->bot->userStorage()->get('circle_id');
+                $item = UserInCircle::where("user_id", $arg2)
+                    ->where("circle_id", $arg3)
+                    ->first();
+
+                if (is_null($item)) {
+                    $this->bot->reply("Пользователь не найден в данном кругу интересов");
+                    return;
+                }
+                $item->delete();
+                $this->bot->reply("Пользователь успешно исключен из данного круга интересов!");
+
+                $user = User::where("id", $arg2)->first();
+
+                if (is_null($user)) {
+                    $this->bot->reply("Пользователь не найден....");
+                    return;
+                }
+
+                $this->bot->sendRequest("sendMessage",
+                    [
+                        "chat_id" => $user->telegram_chat_id,
+                        "parse_mode" => "markdown",
+                        "text" => "Вы были исключены из круга интересов....",
+                    ]);
+                $this->bot->userStorage()->delete();
                 break;
             default:
             case "003":
@@ -167,8 +203,7 @@ class StartWithDataConversation extends Conversation
             try {
 
 
-
-                 $this->bot->sendRequest("sendMessage",
+                $this->bot->sendRequest("sendMessage",
                     [
                         "chat_id" => $user_chat_id,
                         "parse_mode" => "markdown",
@@ -177,7 +212,7 @@ class StartWithDataConversation extends Conversation
                             'inline_keyboard' => [
                                 [
                                     ["text" => "Ответить!", "url" => "https://t.me/" . env("APP_BOT_NAME") . "?start=$code"],
-                                    ["text" => "Игнориовать", "callback_data" => "/ignore ".$user->id]
+                                    ["text" => "Игнориовать", "callback_data" => "/ignore " . $user->id]
                                 ]
                             ]
                         ])
@@ -187,7 +222,7 @@ class StartWithDataConversation extends Conversation
 
             } catch (\Exception $e) {
                 Log::info($e->getTraceAsString());
-                $this->bot->reply("Ответ не доставлен пользователю:(" );
+                $this->bot->reply("Ответ не доставлен пользователю:(");
             }
 
         });

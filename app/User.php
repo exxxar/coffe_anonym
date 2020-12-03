@@ -121,7 +121,6 @@ class User extends Authenticatable
                 pow($user_item->latitude - $user->latitude, 2) +
                 pow($user_item->longitude - $user->longitude, 2), 0.5);
 
-            Log::info($user_item->id . " ~" . round($dist * 1000) . " метров");
             array_push($tmp_users_with_dist, [
                 "user" => $user_item,
                 "dist" => round($dist * 1000),

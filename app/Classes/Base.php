@@ -283,7 +283,6 @@ class Base
         $keyboard = [];
 
         array_push($keyboard, ["\xF0\x9F\x92\xABСтатистика"]);
-        array_push($keyboard, ["\xF0\x9F\x93\x8BНайти и удалить пользователя"]);
         array_push($keyboard, ["\xF0\x9F\x93\x8BСписок событий", "\xF0\x9F\x93\x86Добавить событие"]);
         array_push($keyboard, ["\xF0\x9F\x92\xABКруги по интересам", "\xF0\x9F\x8E\x88Новый круг интересов"]);
         /*array_push($keyboard, ["\xF0\x9F\x92\xACРассылка всем"]);*/
@@ -402,6 +401,7 @@ class Base
         $id = $telegramUser->getId();
 
         $user = (User::with(["circles"])->where("telegram_chat_id", $id)->first());
+
         $circles = $user->circles()
             ->take(env("CIRCLES_PER_PAGE"))
             ->skip(env("CIRCLES_PER_PAGE") * $page)
@@ -424,7 +424,7 @@ class Base
 
             if (Base::isAdmin($bot)) {
                 array_push($keyboard, [
-                    ["text" => "\xE2\x9D\x8EСписок пользователей", "callback_data" => "/user_list " . $circle->id . " 0"],
+                    ["text" => "\xF0\x9F\x90\x92Список пользователей", "callback_data" => "/user_list " . $circle->id . " 0"],
                 ]);
             }
             $peopleCount = UserInCircle::where("circle_id", $circle->id)->count();
@@ -486,6 +486,67 @@ class Base
                             $inline_keyboard
                     ])
                 ]);
+
+    }
+
+    public static function usersList($bot, $circle, $page=0)
+    {
+        $telegramUser = $bot->getUser();
+        $id = $telegramUser->getId();
+
+        $users = $circle->users()
+            ->skip($page * env("USERS_PER_PAGE"))
+            ->take(env("USERS_PER_PAGE"))
+            ->get();
+
+        $message = "";
+        foreach ($users as $user) {
+
+            $code = "009" . $user->id;
+
+            $message .= sprintf("%s %s <a href='https://t.me/%s?start=%s'>Удалить</a> \n",
+                $user->name,
+                $user->fio_from_telegram,
+                env("APP_BOT_NAME"),
+                $code
+            );
+
+
+        }
+
+
+        $inline_keyboard = [];
+
+        if ($page == 0 && count($users) == env("USERS_PER_PAGE"))
+            array_push($inline_keyboard, [['text' => "Следующая страница", 'callback_data' => "/user_list $circle->id " . ($page + 1)]]);
+        if ($page > 0) {
+            if (count($users) == 0) {
+                array_push($inline_keyboard, [['text' => "Предидущая страница", 'callback_data' => "/user_list $circle->id " . ($page - 1)]]);
+            }
+            if (count($users)==env("USERS_PER_PAGE")) {
+                array_push($inline_keyboard, [['text' => "Предидущая страница", 'callback_data' => "/user_list $circle->id " . ($page - 1)]]);
+                array_push($inline_keyboard, [['text' => "Следующая страница", 'callback_data' => "/user_list $circle->id " . ($page + 1)]]);
+            }
+            if (count($users) > 0 && count($users) < env("USERS_PER_PAGE")) {
+                array_push($inline_keyboard, [['text' => "Предидущая страница", 'callback_data' => "/user_list $circle->id " . ($page - 1)]]);
+            }
+        }
+
+
+
+        $bot->sendRequest("sendMessage",
+            [
+                "chat_id" => $id,
+                "text" => $message,
+                "parse_mode" => "HTML",
+                "disable_web_page_preview" => true,
+                'reply_markup' => json_encode([
+                    'inline_keyboard' =>
+                        $inline_keyboard
+                ])
+            ]);
+
+
 
     }
 
@@ -605,7 +666,7 @@ class Base
 
         Base::mainMenu($bot, $message);
 
-      //  Base::checkSex($bot);
+        //  Base::checkSex($bot);
     }
 
 

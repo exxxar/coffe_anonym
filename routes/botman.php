@@ -243,6 +243,7 @@ $botman->hears('/create|.*Новый круг интересов', BotManControl
 
 $botman->hears('/new_event|.*Добавить событие', BotManController::class . '@startNewEventConversation');
 
+
 $botman->hears('/i_am_([a-zA-Z]+)', function ($bot, $type) {
     $telegramUser = $bot->getUser();
     $id = $telegramUser->getId();
@@ -372,16 +373,16 @@ $botman->hears('/ignore ([0-9a-zA-Z-]{36})', function ($bot, $userId) {
 })->stopsConversation();
 
 $botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $range) {
-    $telegramUser = $bot->getUser();
-    $id = $telegramUser->getId();
+    $telegramuser = $bot->getuser();
+    $id = $telegramuser->getid();
 
     $range_array = [500, 1000, 2000, 3000];
 
     if (!in_array($range, $range_array)) {
-        $bot->reply("Упс... мне кажется такой дистанции нет");
+        $bot->reply("упс... мне кажется такой дистанции нет");
         return;
     }
-    $user = User::where("telegram_chat_id", $id)->first();
+    $user = user::where("telegram_chat_id", $id)->first();
 
     $settings = json_decode(is_null($user->settings) ?
         json_encode([
@@ -395,9 +396,9 @@ $botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $rang
     $user->settings = json_encode($settings);
     $user->save();
 
-    Base::editOrSend($bot, json_encode([
-        "on_edit" => Base::prepareAdditionalText($user),
-        "on_send" => sprintf("Да, хорошо что вы определились! Так будет проще подбирать собеседников\xF0\x9F\x98\x89 А если появится желание что-то опять изменить то /addition_settings")
+    base::editorsend($bot, json_encode([
+        "on_edit" => base::prepareadditionaltext($user),
+        "on_send" => sprintf("да, хорошо что вы определились! так будет проще подбирать собеседников\xF0\x9F\x98\x89 а если появится желание что-то опять изменить то /addition_settings")
 
     ]));
 
@@ -588,6 +589,30 @@ $botman->hears('/remove_event ([0-9]+)', function ($bot, $id) {
 
 })->stopsConversation();
 
+
+$botman->hears("/user_list ([0-9a-zA-Z-]{36}) ([0-9]+)|/user_list ([0-9a-zA-Z-]{36})", function ($bot, $circleId, $page = 0) {
+    if (!Base::isAdmin($bot)) {
+        $bot->reply("Раздел недоступен");
+        return;
+    }
+
+    $circle = Circle::with(["users"])->where("id", $circleId)->first();
+
+    if (is_null($circle)) {
+        $bot->reply("Хм, круг интересов не найден!");
+        return;
+    }
+
+    Base::usersList($bot,
+       $circle,
+        $page);
+
+    $bot->userStorage()->save([
+        'circle_id' => $circleId
+    ]);
+
+});
+
 $botman->hears('/enter_event ([0-9]+)', function ($bot, $eventId) {
 
     $event = MeetEvents::find($eventId);
@@ -674,18 +699,22 @@ $botman->hears('/any_users', function ($bot) {
     $tmp_text = "";
     foreach ($prepared as $index => $item) {
 
-        $tmp_text .= sprintf("<b>%s</b> (~%s м., в сети %s часов назад)\n",
+        $code = "007".$item["user"]->id;
+        $tmp_text .= sprintf("<b>%s</b> (~%s м., в сети %s часов назад) <a href='https://t.me/%s?start=%s'>Написать</a>\n",
             ($item["user"]->fio_from_telegram ?? $item["user"]->name ?? $item["user"]->id),
             $item["dist"],
-            $item["last_seen"]
+            $item["last_seen"],
+            env("APP_BOT_NAME"),
+            $code
 
         );
+
     }
 
     $keyboard =
         [
             [
-                ["text" => "Пригласить из этого списка", "callback_data" => "/meet_with_random"]
+                ["text" => "Пригласить кого-то этого списка", "callback_data" => "/meet_with_random"]
             ]
         ];
 
@@ -695,6 +724,7 @@ $botman->hears('/any_users', function ($bot) {
             "text" => $tmp_text,
             "parse_mode" => "HTML",
             "disable_notification" => true,
+            "disable_web_page_preview" => true,
             'reply_markup' => json_encode([
                 'inline_keyboard' => $keyboard
             ])
