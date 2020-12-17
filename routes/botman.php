@@ -376,7 +376,7 @@ $botman->hears('/in_range_([0-9]+)', function (\BotMan\BotMan\BotMan $bot, $rang
     $telegramuser = $bot->getuser();
     $id = $telegramuser->getid();
 
-    $range_array = [500, 1000, 2000, 3000];
+    $range_array = [500, 1000, 2000, 3000, 10000, 100000];
 
     if (!in_array($range, $range_array)) {
         $bot->reply("упс... мне кажется такой дистанции нет");
@@ -604,7 +604,7 @@ $botman->hears("/user_list ([0-9a-zA-Z-]{36}) ([0-9]+)|/user_list ([0-9a-zA-Z-]{
     }
 
     Base::usersList($bot,
-       $circle,
+        $circle,
         $page);
 
     $bot->userStorage()->save([
@@ -699,9 +699,9 @@ $botman->hears('/any_users', function ($bot) {
     $tmp_text = "";
     foreach ($prepared as $index => $item) {
 
-        $code = "007".$item["user"]->id;
-        $tmp_text .= sprintf("<b>%s</b> (~%s м., в сети %s часов назад) <a href='https://t.me/%s?start=%s'>Написать</a>\n",
-            ($item["user"]->fio_from_telegram ?? $item["user"]->name ?? $item["user"]->id),
+        $code = "007" . $item["user"]->id;
+        $tmp_text .= sprintf("<b>%s</b> (~%s м., в сети %s часов назад) <a href='https://t.me/%s?start=%s'>Или написать</a>\n",
+            ("@" . $item["user"]->name ?? $item["user"]->fio_from_telegram ?? $item["user"]->id),
             $item["dist"],
             $item["last_seen"],
             env("APP_BOT_NAME"),
@@ -918,7 +918,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $nearest_user = $nearest->random(1)->first();
 
 
-        $message = "Добрый день! Собеседник хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)";
+        $message = "Добрый день! Собеседник %s хочет пригласить Вас на чашечку кофе! Свяжитесь с ним и назначте ему встречу:)";
 
         $nearest_user->last_search = null;
         $user->last_search = null;
@@ -938,7 +938,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $bot->sendRequest("sendMessage",
             [
                 "chat_id" => $nearest_user->telegram_chat_id,
-                "text" => $message,
+                "text" => sprintf($message, ("@" . $user->name ?? $user->fio_from_telegram ?? $user->id ?? 'Ошибка')),
                 "parse_mode" => "Markdown",
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [
@@ -953,7 +953,7 @@ $botman->fallback(function (\BotMan\BotMan\BotMan $bot) {
         $bot->sendRequest("sendMessage",
             [
                 "chat_id" => $user->telegram_chat_id,
-                "text" => $message,
+                "text" => sprintf($message, ("@" . $nearest_user->name ?? $nearest_user->fio_from_telegram ?? $nearest_user->id ?? 'Ошибка')),
                 "parse_mode" => "Markdown",
                 'reply_markup' => json_encode([
                     'inline_keyboard' => [

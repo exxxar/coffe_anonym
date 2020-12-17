@@ -689,6 +689,8 @@ class Base
 /in_range_1000 - до 1 км " . ($settings->range == 1000 ? "\xE2\x9C\x85" : "") . "
 /in_range_2000 - до 2х км " . ($settings->range == 2000 ? "\xE2\x9C\x85" : "") . "
 /in_range_3000 - до 3х км " . ($settings->range == 3000 ? "\xE2\x9C\x85" : "") . "
+/in_range_10000 - до 10 км " . ($settings->range == 10000 ? "\xE2\x9C\x85" : "") . "
+/in_range_100000 - до 100 км " . ($settings->range == 100000 ? "\xE2\x9C\x85" : "") . "
 
 /from_city - собеседник из вашего города " . ($settings->city == 1 ? "\xE2\x9C\x85" : "") . "
 /from_any - собеседник из любого города " . ($settings->city == 0 ? "\xE2\x9C\x85" : "") . "
