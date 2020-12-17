@@ -49,7 +49,7 @@ class RequestConversation extends Conversation
         $question = Question::create("Ваше сообщение собеседнику (не менее 5 символов):")
             ->fallback('Спасибо что пообщались со мной:)!');
 
-        $this->ask($question, function (Answer $answer)  {
+        $this->ask($question, function (Answer $answer) {
 
             $message = $answer->getText();
 
@@ -66,6 +66,7 @@ class RequestConversation extends Conversation
             }
 
             $user = User::where("id", $this->userId)->first();
+            $self = User::where("id", $this->current_user_id)->first();
 
 
             try {
@@ -74,12 +75,12 @@ class RequestConversation extends Conversation
                     [
                         "chat_id" => $user->telegram_chat_id,
                         "parse_mode" => "markdown",
-                        "text" => "*Собеседник:* " . $message,
+                        "text" => sprintf("*Собеседник* %s %s", ("@" . $user->name ?? $user->fio_from_telegram ?? $user->id), $message),
                         'reply_markup' => json_encode([
                             'inline_keyboard' => [
                                 [
-                                    ["text" => "Ответить!", "callback_data" => "/send_message $user->id"],
-                                    ["text" => "Игнориовать", "callback_data" => "/ignore ".$user->id]
+                                    ["text" => "Ответить!", "callback_data" => "/send_message $self->id"],
+                                    ["text" => "Игнориовать", "callback_data" => "/ignore " . $self->id]
                                 ]
                             ]
                         ])
@@ -88,7 +89,7 @@ class RequestConversation extends Conversation
                 $this->bot->reply("Ответ доставлен вашему собеседнику;)");
 
             } catch (\Exception $e) {
-                $this->bot->reply("Ответ не доставлен пользователю:(" );
+                $this->bot->reply("Ответ не доставлен пользователю:(");
             }
 
         });
